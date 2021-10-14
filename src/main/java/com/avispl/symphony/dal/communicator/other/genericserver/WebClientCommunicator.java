@@ -29,6 +29,7 @@ public class WebClientCommunicator extends HttpCommunicator implements Monitorab
 	private static final String SPLIT_LINE = "\n";
 	private static final String URI_STATUS = "URI Status";
 	private static final String NOT_CONFIGURED = "Not Configured";
+	private static final String EMPTY = "";
 
 	static {
 		STATUS_CODE_MAP.put(200, " OK");
@@ -74,7 +75,7 @@ public class WebClientCommunicator extends HttpCommunicator implements Monitorab
 	 * @return List<Statistics> This returns the list of statistics
 	 */
 	@Override
-	public List<Statistics> getMultipleStatistics() throws Exception {
+	public List<Statistics> getMultipleStatistics() {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Perform doGet() at host " + this.getHost());
 		}
@@ -86,7 +87,7 @@ public class WebClientCommunicator extends HttpCommunicator implements Monitorab
 				doGet(this.URI);
 				uriStatusMessage = generateResponseMessage(200);
 			} catch (Exception e) {
-				String errorMessage = e.getMessage();
+				String errorMessage = StringUtils.isNullOrEmpty(e.getMessage()) ? EMPTY : e.getMessage();
 				int statusCode = parseToStatusCode(errorMessage);
 				if (!STATUS_CODE_MAP.containsKey(statusCode)) {
 					// split the error message to operation + customMessage

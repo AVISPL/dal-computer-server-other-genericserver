@@ -1,22 +1,23 @@
 /*
  * Copyright (c) 2015-2021 AVI-SPL, Inc. All Rights Reserved.
  */
-
 package com.avispl.symphony.dal.communicator.other.genericserver;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Map;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.communicator.HttpCommunicator;
 
 /**
@@ -25,14 +26,14 @@ import com.avispl.symphony.dal.communicator.HttpCommunicator;
  * 400, 401, 403, 404, 500 in response status code; URI with full path and short path, protocol as http and https
  */
 public class WebClientCommunicatorTest {
-	private static final int PORT = 8088;
+	private static final int HTTP_PORT = 8088;
 	private static final int HTTPS_PORT = 8443;
 	private static final String HOST_NAME = "127.0.0.1";
 	private static final String PROTOCOL = "http";
 	static WebClientCommunicator webClientCommunicator;
 
 	@Rule
-	public WireMockRule wireMockRule = new WireMockRule(options().port(PORT).httpsPort(HTTPS_PORT)
+	public WireMockRule wireMockRule = new WireMockRule(options().port(HTTP_PORT).httpsPort(HTTPS_PORT)
 			.bindAddress(HOST_NAME));
 
 	@BeforeEach
@@ -41,7 +42,7 @@ public class WebClientCommunicatorTest {
 		webClientCommunicator = new WebClientCommunicator();
 		webClientCommunicator.setTrustAllCertificates(true);
 		webClientCommunicator.setProtocol(PROTOCOL);
-		webClientCommunicator.setPort(PORT);
+		webClientCommunicator.setPort(wireMockRule.httpsPort());
 		webClientCommunicator.setHost(HOST_NAME);
 		webClientCommunicator.setContentType("text/plain");
 		webClientCommunicator.setAuthenticationScheme(HttpCommunicator.AuthenticationScheme.None);
@@ -63,7 +64,7 @@ public class WebClientCommunicatorTest {
 		webClientCommunicator.setURI("/");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
-		assertEquals("200 OK", stats.get("URI Status"));
+		Assertions.assertEquals("200 OK", stats.get("URI Status"));
 	}
 
 	/**
@@ -95,7 +96,6 @@ public class WebClientCommunicatorTest {
 	 */
 	@Test
 	public void getMultipleStatisticsWithStatusCode403() throws Exception {
-		//  Expect throw API Error
 		webClientCommunicator.setURI("/forbidden");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
@@ -109,13 +109,7 @@ public class WebClientCommunicatorTest {
 	public void getMultipleStatisticsWithStatusCode404() {
 		//  Expect throw API Error
 		webClientCommunicator.setURI("/not-exist-uri");
-		try {
-			ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
-			fail("Expect fail here due to status code 404 out of range 200");
-		} catch (Exception e) {
-			// expected
-			assertEquals("GET operation failed", e.getMessage());
-		}
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 404 out of range 200");
 	}
 
 	/**
@@ -148,27 +142,17 @@ public class WebClientCommunicatorTest {
 	public void getMultipleStatisticsWithStatusCode500() {
 		//  Expect throw API Error
 		webClientCommunicator.setURI("internal-server-error");
-		try {
-			ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
-			fail("Expect fail here due to status code 500 out of range 200");
-		} catch (Exception e) {
-			assertEquals("GET operation failed", e.getMessage());
-		}
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 500 out of range 200");
 	}
 
 	/**
 	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with API Error due to 300 response status code.
 	 */
 	@Test
-	public void getMultipleStatisticsWithStatusCode300() throws Exception {
+	public void getMultipleStatisticsWithStatusCode300() {
 		//  Expect throw API Error
 		webClientCommunicator.setURI("/redirect");
-		try {
-			ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
-			fail("Expect fail here due to status code 300 out of range 200");
-		} catch (Exception e) {
-			assertEquals("GET operation failed", e.getMessage());
-		}
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 300 out of range 200");
 	}
 
 	/**
@@ -198,7 +182,6 @@ public class WebClientCommunicatorTest {
 		webClientCommunicator.setURI("/https");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
-		System.out.println(stats.get("URI Status"));
 		assertEquals("200 OK", stats.get("URI Status"));
 	}
 }
