@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
 import java.util.Map;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -22,8 +23,8 @@ import com.avispl.symphony.dal.communicator.HttpCommunicator;
 
 /**
  * Unit test for {@link WebClientCommunicator}.
- * Cover cases: success as 200 in response status code for different content types such as html, xml, jpg; API Error such as 300,
- * 400, 401, 403, 404, 500 in response status code; URI with full path and short path, protocol as http and https
+ * Success as 2xx in response status code for different content types such as html, xml, jpg; API Error for status code out of range 1xx to 5xx
+ * URI with full path and short path, protocol as http and https
  */
 public class WebClientCommunicatorTest {
 	private static final int HTTP_PORT = 8088;
@@ -42,7 +43,7 @@ public class WebClientCommunicatorTest {
 		webClientCommunicator = new WebClientCommunicator();
 		webClientCommunicator.setTrustAllCertificates(true);
 		webClientCommunicator.setProtocol(PROTOCOL);
-		webClientCommunicator.setPort(wireMockRule.httpsPort());
+		webClientCommunicator.setPort(wireMockRule.port());
 		webClientCommunicator.setHost(HOST_NAME);
 		webClientCommunicator.setContentType("text/plain");
 		webClientCommunicator.setAuthenticationScheme(HttpCommunicator.AuthenticationScheme.None);
@@ -103,13 +104,14 @@ public class WebClientCommunicatorTest {
 	}
 
 	/**
-	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with API Error due to 404 response status code.
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 404 response status code.
 	 */
 	@Test
-	public void getMultipleStatisticsWithStatusCode404() {
-		//  Expect throw API Error
+	public void getMultipleStatisticsWithStatusCode404() throws Exception {
 		webClientCommunicator.setURI("/not-exist-uri");
-		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 404 out of range 200");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("404 Not Found", stats.get("URI Status"));
 	}
 
 	/**
@@ -136,23 +138,135 @@ public class WebClientCommunicatorTest {
 	}
 
 	/**
-	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with API Error due to 500 response status code.
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 300 response status code.
 	 */
 	@Test
-	public void getMultipleStatisticsWithStatusCode500() {
-		//  Expect throw API Error
-		webClientCommunicator.setURI("internal-server-error");
-		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 500 out of range 200");
+	public void getMultipleStatisticsWithStatusCode300() throws Exception {
+		webClientCommunicator.setURI("/redirect");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("300 Multiple Choice", stats.get("URI Status"));
 	}
 
 	/**
-	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with API Error due to 300 response status code.
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 500 Internal Server Error
 	 */
 	@Test
-	public void getMultipleStatisticsWithStatusCode300() {
-		//  Expect throw API Error
-		webClientCommunicator.setURI("/redirect");
-		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 300 out of range 200");
+	public void getMultipleStatisticsWithStatusCode500() throws Exception {
+		webClientCommunicator.setURI("/internal-server-error");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("500 Internal Server Error", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 501 Not Implemented
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode501() throws Exception {
+		webClientCommunicator.setURI("/not-implemented");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("501 Not Implemented", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 502 Bad Gateway
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode502() throws Exception {
+		webClientCommunicator.setURI("/bad-gateway");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("502 Bad Gateway", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 503 Service Unavailable
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode503() throws Exception {
+		webClientCommunicator.setURI("/service-unavailable");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("503 Service Unavailable", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 504 Gateway Timeout
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode504() throws Exception {
+		webClientCommunicator.setURI("/gateway-timeout");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("504 Gateway Timeout", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 505 HTTP Version Not Supported
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode505() throws Exception {
+		webClientCommunicator.setURI("/http-version-not-supported");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("505 HTTP Version Not Supported", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 506 Variant Also Negotiates
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode506() throws Exception {
+		webClientCommunicator.setURI("/variant-also-negotiates");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("506 Variant Also Negotiates", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 507 Insufficient Storage (WebDAV)
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode507() throws Exception {
+		webClientCommunicator.setURI("/insufficient-storage");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("507 Insufficient Storage (WebDAV)", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 508 Loop Detected (WebDAV)
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode508() throws Exception {
+		webClientCommunicator.setURI("/loop-detected");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("508 Loop Detected (WebDAV)", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 510 Not Extended
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode510() throws Exception {
+		webClientCommunicator.setURI("/not-extended");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("510 Not Extended", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response 511 Network Authentication Required
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode511() throws Exception {
+		webClientCommunicator.setURI("/network-authentication-required");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("511 Network Authentication Required", stats.get("URI Status"));
 	}
 
 	/**
@@ -167,6 +281,12 @@ public class WebClientCommunicatorTest {
 		assertEquals("200 OK", stats.get("URI Status"));
 	}
 
+	@Test
+	public void getMultipleStatisticsWithAPIError() throws IOException {
+		webClientCommunicator.setURI("/out-range-http-status-code");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 600 out of range 200");
+	}
+
 	/**
 	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code as 200 and https protocol being used.
 	 */
@@ -177,7 +297,6 @@ public class WebClientCommunicatorTest {
 		webClientCommunicator.setProtocol("https");
 		webClientCommunicator.setPort(wireMockRule.httpsPort());
 		webClientCommunicator.setContentType("text/plain");
-		webClientCommunicator.setTrustAllCertificates(true);
 		webClientCommunicator.init();
 		webClientCommunicator.setURI("/https");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);

@@ -85,7 +85,137 @@
       },
       "response": {
         "status": 500,
-        "body": "Internal server error",
+        "body": "500 Internal Server Error",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/not-implemented"
+      },
+      "response": {
+        "status": 501,
+        "body": "501 Not Implemented",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/bad-gateway"
+      },
+      "response": {
+        "status": 502,
+        "body": "502 Bad Gateway",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/service-unavailable"
+      },
+      "response": {
+        "status": 503,
+        "body": "503 Service Unavailable",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/gateway-timeout"
+      },
+      "response": {
+        "status": 504,
+        "body": "504 Gateway Timeout",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/http-version-not-supported"
+      },
+      "response": {
+        "status": 505,
+        "body": "505 HTTP Version Not Supported",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/variant-also-negotiates"
+      },
+      "response": {
+        "status": 506,
+        "body": "506 Variant Also Negotiates",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/insufficient-storage"
+      },
+      "response": {
+        "status": 507,
+        "body": "507 Insufficient Storage (WebDAV)",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/loop-detected"
+      },
+      "response": {
+        "status": 508,
+        "body": "508 Loop Detected (WebDAV)",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/not-extended"
+      },
+      "response": {
+        "status": 510,
+        "body": "510 Not Extended",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/network-authentication-required"
+      },
+      "response": {
+        "status": 511,
+        "body": "511 Network Authentication Required",
         "headers": {
           "Content-Type": "text/plain"
         }
@@ -125,6 +255,32 @@
       "response": {
         "status": 200,
         "body": "200 OK",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/https"
+      },
+      "response": {
+        "status": 200,
+        "body": "200 OK",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/out-range-http-status-code"
+      },
+      "response": {
+        "status": 600,
+        "body": "600",
         "headers": {
           "Content-Type": "text/plain"
         }
