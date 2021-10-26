@@ -13,6 +13,7 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import org.apache.http.HttpResponse;
+import org.apache.http.ProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -125,6 +126,14 @@ public class HttpClientConnector {
 		HttpResponse response = null;
 		try {
 			response = client.execute(request, this.httpClientContext);
+		} catch (Exception exc) {
+			String errorMessage = exc.getMessage();
+			if (StringUtils.isNullOrEmpty(errorMessage)) {
+				if (exc.getCause() != null) {
+					errorMessage = exc.getCause().getMessage();
+				}
+			}
+			throw new Exception(errorMessage);
 		} finally {
 			if (response instanceof CloseableHttpResponse) {
 				((CloseableHttpResponse) response).close();

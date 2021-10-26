@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
@@ -24,6 +26,7 @@ public class WebClientCommunicator extends HttpCommunicator implements Monitorab
 	private static final String WHITE_SPACE = " ";
 	private static final String URI_STATUS = "URI Status";
 	private static final String NOT_CONFIGURED = "Not Configured";
+	private static final Pattern HTTP_STATUS_CODE_PATTERN = Pattern.compile("(\\d{3})");
 	/**
 	 * URI string that is used to check accessible.
 	 */
@@ -70,10 +73,20 @@ public class WebClientCommunicator extends HttpCommunicator implements Monitorab
 		final Map<String, String> stats = new HashMap<>();
 		String uriStatusMessage;
 		if (!StringUtils.isNullOrEmpty(this.URI)) {
-			int statusCode = httpClientConnector.doGet(this.URI);
-			if (!HttpStatus.containsKey(statusCode)) {
-				throw new ResourceNotReachableException("Response status code not in range");
+			int statusCode;
+			try {
+				statusCode = httpClientConnector.doGet(this.URI);
+				if (!HttpStatus.containsKey(statusCode)) {
+					throw new ResourceNotReachableException("Response status code not in range");
+				}
+			} catch (Exception exc) {
+				String errorMessage = exc.getMessage();
+				statusCode = parseToStatusCode(errorMessage);
+				if (statusCode == -1) {
+					throw new ResourceNotReachableException(errorMessage);
+				}
 			}
+			System.out.println(statusCode);
 			uriStatusMessage = generateResponseMessage(statusCode);
 			stats.put(URI_STATUS, uriStatusMessage);
 		} else {
@@ -112,5 +125,19 @@ public class WebClientCommunicator extends HttpCommunicator implements Monitorab
 	 */
 	private String generateResponseMessage(int statusCode) {
 		return statusCode + WHITE_SPACE + HttpStatus.getDescription(statusCode);
+	}
+
+	/**
+	 * Parse error message to status code
+	 * Return -1 if out of range 200
+	 *
+	 * @return int This returns the HTTP response status code or -1 if it's out of the valid range
+	 */
+	private int parseToStatusCode(String errorMessage) {
+		Matcher matcher = HTTP_STATUS_CODE_PATTERN.matcher(errorMessage);
+		while (matcher.find()) {
+			return Integer.parseInt(matcher.group(1));
+		}
+		return -1;
 	}
 }

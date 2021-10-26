@@ -42,6 +42,7 @@ public class WebClientCommunicatorTest {
 		wireMockRule.start();
 		webClientCommunicator = new WebClientCommunicator();
 		webClientCommunicator.setTrustAllCertificates(true);
+		webClientCommunicator.setTimeout(5000);
 		webClientCommunicator.setProtocol(PROTOCOL);
 		webClientCommunicator.setPort(wireMockRule.port());
 		webClientCommunicator.setHost(HOST_NAME);
@@ -54,6 +55,46 @@ public class WebClientCommunicatorTest {
 	public void stopWireMockRule() {
 		webClientCommunicator.destroy();
 		wireMockRule.stop();
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()}  with API Error due to 100 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode100() throws Exception {
+		// Attempt to check accessible for index.html
+		webClientCommunicator.setURI("/100");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 100 is not supported");
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()}  with API Error due to 101 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode101() throws Exception {
+		// Attempt to check accessible for index.html
+		webClientCommunicator.setURI("/101");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 101 is not supported");
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()}  with API Error due to 102 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode102() throws Exception {
+		// Attempt to check accessible for index.html
+		webClientCommunicator.setURI("/102");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 102 is not supported");
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()}  with API Error due to 103 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode103() throws Exception {
+		// Attempt to check accessible for index.html
+		webClientCommunicator.setURI("/103");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to status code 103 is not supported");
 	}
 
 	/**
@@ -90,6 +131,114 @@ public class WebClientCommunicatorTest {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 		assertEquals("200 OK", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 201 Created
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode201() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/201");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("201 Created", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 202 Accepted
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode202() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/202");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("202 Accepted", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 203 Non-Authoritative Information
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode203() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/203");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("203 Non-Authoritative Information", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 204 No Content
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode204() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/204");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("204 No Content", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 205 Reset Content
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode205() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/205");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("205 Reset Content", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 206 Partial Content
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode206() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/206");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("206 Partial Content", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 207 Multi-Status (WebDAV)
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode207() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/207");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("207 Multi-Status (WebDAV)", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 208 Already Reported (WebDAV)
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode208() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/208");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("208 Already Reported (WebDAV)", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 226 IM Used (HTTP Delta encoding)
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode226() throws Exception {
+		// Attempt to check accessible for a jpg file
+		webClientCommunicator.setURI("/226");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("226 IM Used (HTTP Delta encoding)", stats.get("URI Status"));
 	}
 
 	/**
@@ -142,10 +291,98 @@ public class WebClientCommunicatorTest {
 	 */
 	@Test
 	public void getMultipleStatisticsWithStatusCode300() throws Exception {
-		webClientCommunicator.setURI("/redirect");
+		webClientCommunicator.setURI("/300");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 		assertEquals("300 Multiple Choice", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 301 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode301() throws Exception {
+		webClientCommunicator.setURI("/301");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("301 Moved Permanently", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 301 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode302() throws Exception {
+		webClientCommunicator.setURI("/302");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("302 Found", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 303 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode303() throws Exception {
+		webClientCommunicator.setURI("/303");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("303 See Other", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 304 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode304() throws Exception {
+		webClientCommunicator.setURI("/304");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("304 Not Modified", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 305 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode305() throws Exception {
+		webClientCommunicator.setURI("/305");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("305 Use Proxy", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 306 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode306() throws Exception {
+		webClientCommunicator.setURI("/306");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("306 unused", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 307 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode307() throws Exception {
+		webClientCommunicator.setURI("/307");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("307 Temporary Redirect", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with 308 response status code.
+	 */
+	@Test
+	public void getMultipleStatisticsWithStatusCode308() throws Exception {
+		webClientCommunicator.setURI("/308");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals("308 Permanent Redirect", stats.get("URI Status"));
 	}
 
 	/**
