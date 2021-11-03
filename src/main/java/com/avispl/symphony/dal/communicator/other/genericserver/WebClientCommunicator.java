@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2021 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.symphony.dal.communicator.other.genericserver;
 
@@ -11,6 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.ProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -25,6 +26,9 @@ import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * This class checks accessible to a given URI then return the HTTP status code to Symphony
+ *
+ * @author Duy Nguyen
+ * @since 1.0.0
  */
 public class WebClientCommunicator extends RestCommunicator implements Monitorable {
 
@@ -46,18 +50,18 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
-	 * Retrieves {@code URI}
+	 * Retrieves {@code {@link #URI}}
 	 *
-	 * @return String This returns the current URI
+	 * @return value of {@link #URI}
 	 */
 	public String getURI() {
-		return this.URI;
+		return URI;
 	}
 
 	/**
 	 * Sets {@code URI}
 	 *
-	 * @param URI This is the URI to be set
+	 * @param URI the {@code java.lang.String} field
 	 */
 	public void setURI(String URI) {
 		this.URI = URI;
@@ -91,8 +95,13 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 						errorMessage = exc.getCause().getMessage();
 					}
 				}
-				statusCode = parseToStatusCode(errorMessage);
-				if (statusCode == -1) {
+				// handle 3xx cases in case of exception
+				if (exc.getCause() instanceof ProtocolException) {
+					statusCode = parseTo3XXStatusCode(errorMessage);
+					if (statusCode == -1) {
+						throw new ResourceNotReachableException(errorMessage);
+					}
+				} else {
 					throw new ResourceNotReachableException(errorMessage);
 				}
 			}
@@ -196,17 +205,20 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
-	 * Parse error message to status code
-	 * Return -1 if out of range 200
+	 * Parse error message to 3xx status code
+	 * Return -1 if out of range 3xx or in range 3xx but not in HttpStatus map
 	 *
 	 * @return int This returns the HTTP response status code or -1 if it's out of the valid range
 	 */
-	private int parseToStatusCode(String errorMessage) {
+	private int parseTo3XXStatusCode(String errorMessage) {
 		Matcher matcher = HTTP_STATUS_CODE_PATTERN.matcher(errorMessage);
 		while (matcher.find()) {
-			return Integer.parseInt(matcher.group(1));
+			int statusCode = Integer.parseInt(matcher.group(1));
+			// in range 3xx
+			if (300 <= statusCode && statusCode < 400 && HttpStatus.containsKey(statusCode)) {
+				return statusCode;
+			}
 		}
 		return -1;
 	}
-
 }
