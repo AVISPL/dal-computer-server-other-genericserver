@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2021 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.symphony.dal.communicator.other.genericserver;
 
@@ -518,6 +518,10 @@ public class WebClientCommunicatorTest {
 		assertEquals("200 OK", stats.get("URI Status"));
 	}
 
+	/**
+	 * Test method for status code 600 - out of range
+	 * @throws IOException
+	 */
 	@Test
 	public void getMultipleStatisticsWithAPIError() throws IOException {
 		webClientCommunicator.setURI("/out-range-http-status-code");
@@ -539,5 +543,21 @@ public class WebClientCommunicatorTest {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 		assertEquals("200 OK", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test method for protocol not support on host.
+	 *
+	 * @throws Exception
+	 */
+	@Test
+	public void getMultipleStatisticsWithHttpsProtocolNotExisted() throws Exception {
+		webClientCommunicator.destroy();
+		webClientCommunicator.setProtocol("http");
+		webClientCommunicator.setPort(wireMockRule.httpsPort());
+		webClientCommunicator.setContentType("text/plain");
+		webClientCommunicator.init();
+		webClientCommunicator.setURI("https://127.0.0.1:443/");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Expect fail here due to HTTPS protocol doesn't support on this host");
 	}
 }
