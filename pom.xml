@@ -50,23 +50,23 @@
     <dependency>
       <groupId>com.avispl.symphony.api</groupId>
       <artifactId>symphony-api-dal</artifactId>
-      <version>5.1.1</version>
+      <version>5.3.0</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-api-dal-5.1.1.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-api-dal-5.3.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.avispl.symphony.dal</groupId>
       <artifactId>symphony-dal-commons</artifactId>
-      <version>5.1.1</version>
+      <version>5.3.0</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-dal-commons-5.1.1.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-dal-commons-5.3.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.avispl.symphony.api</groupId>
       <artifactId>symphony-api-commons</artifactId>
-      <version>5.1.1</version>
+      <version>5.3.0</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-api-commons-5.1.1.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-api-commons-5.3.0.jar</systemPath>
     </dependency>
     <!-- Provided scope -->
     <dependency>
