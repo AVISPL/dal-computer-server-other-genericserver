@@ -1,0 +1,576 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/"
+      },
+      "response": {
+        "status": 200,
+        "body": "Hello World",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/xml-file.xml"
+      },
+      "response": {
+        "status": 200,
+        "body": "XML File",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/jpg-file.jpg"
+      },
+      "response": {
+        "status": 200,
+        "body": "JPG File",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/not-exist-uri"
+      },
+      "response": {
+        "status": 404,
+        "body": "404 Not Found",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/invalid-login"
+      },
+      "response": {
+        "status": 401,
+        "body": "401 Unauthorized",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/forbidden"
+      },
+      "response": {
+        "status": 403,
+        "body": "403 Forbidden",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/internal-server-error"
+      },
+      "response": {
+        "status": 500,
+        "body": "500 Internal Server Error",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/not-implemented"
+      },
+      "response": {
+        "status": 501,
+        "body": "501 Not Implemented",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/bad-gateway"
+      },
+      "response": {
+        "status": 502,
+        "body": "502 Bad Gateway",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/service-unavailable"
+      },
+      "response": {
+        "status": 503,
+        "body": "503 Service Unavailable",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/gateway-timeout"
+      },
+      "response": {
+        "status": 504,
+        "body": "504 Gateway Timeout",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/http-version-not-supported"
+      },
+      "response": {
+        "status": 505,
+        "body": "505 HTTP Version Not Supported",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/variant-also-negotiates"
+      },
+      "response": {
+        "status": 506,
+        "body": "506 Variant Also Negotiates",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/insufficient-storage"
+      },
+      "response": {
+        "status": 507,
+        "body": "507 Insufficient Storage (WebDAV)",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/loop-detected"
+      },
+      "response": {
+        "status": 508,
+        "body": "508 Loop Detected (WebDAV)",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/not-extended"
+      },
+      "response": {
+        "status": 510,
+        "body": "510 Not Extended",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/network-authentication-required"
+      },
+      "response": {
+        "status": 511,
+        "body": "511 Network Authentication Required",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/300"
+      },
+      "response": {
+        "status": 300,
+        "body": "Redirect page",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/301"
+      },
+      "response": {
+        "status": 301,
+        "body": "Moved Permanently",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/302"
+      },
+      "response": {
+        "status": 302,
+        "body": "Found",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/303"
+      },
+      "response": {
+        "status": 303,
+        "body": "See Other",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/304"
+      },
+      "response": {
+        "status": 304,
+        "body": "Not Modified",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/305"
+      },
+      "response": {
+        "status": 305,
+        "body": "Use Proxy",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/306"
+      },
+      "response": {
+        "status": 306,
+        "body": "unused",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/307"
+      },
+      "response": {
+        "status": 307,
+        "body": "Temporary Redirect",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/308"
+      },
+      "response": {
+        "status": 308,
+        "body": "Permanent Redirect",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/temporary-redirect"
+      },
+      "response": {
+        "status": 307,
+        "body": "Temporary Redirect",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:80/"
+      },
+      "response": {
+        "status": 200,
+        "body": "Full Path 200 OK",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/https"
+      },
+      "response": {
+        "status": 200,
+        "body": "200 OK",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/https"
+      },
+      "response": {
+        "status": 200,
+        "body": "200 OK",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/201"
+      },
+      "response": {
+        "status": 201,
+        "body": "201",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/202"
+      },
+      "response": {
+        "status": 202,
+        "body": "202",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/203"
+      },
+      "response": {
+        "status": 203,
+        "body": "203",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/204"
+      },
+      "response": {
+        "status": 204,
+        "body": "204",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/205"
+      },
+      "response": {
+        "status": 205,
+        "body": "205",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/206"
+      },
+      "response": {
+        "status": 206,
+        "body": "206",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/207"
+      },
+      "response": {
+        "status": 207,
+        "body": "207",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/208"
+      },
+      "response": {
+        "status": 208,
+        "body": "208",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/226"
+      },
+      "response": {
+        "status": 226,
+        "body": "226",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/out-range-http-status-code"
+      },
+      "response": {
+        "status": 600,
+        "body": "600",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/100"
+      },
+      "response": {
+        "status": 100,
+        "body": "100",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/101"
+      },
+      "response": {
+        "status": 101,
+        "body": "101",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/102"
+      },
+      "response": {
+        "status": 102,
+        "body": "102",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/103"
+      },
+      "response": {
+        "status": 103,
+        "body": "103",
+        "headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    }
+  ]
+}
