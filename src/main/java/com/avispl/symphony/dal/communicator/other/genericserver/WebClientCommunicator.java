@@ -20,6 +20,7 @@ import org.apache.http.ProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.util.EntityUtils;
 
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
@@ -76,6 +77,49 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
+	 * Retrieves {@code {@link #exclude }}
+	 *
+	 * @return value of {@link #exclude}
+	 */
+	public String getExclude() {
+		return exclude;
+	}
+
+	/**
+	 * Retrieves {@code {@link #parseContent }}
+	 *
+	 * @return value of {@link #parseContent}
+	 */
+	public String getParseContent() {
+		return parseContent;
+	}
+
+	/**
+	 * Sets {@code Content}
+	 *
+	 * @param parseContent the {@code java.lang.String} field
+	 */
+	public void setParseContent(String parseContent) {
+		this.parseContent = parseContent;
+	}
+
+	/**
+	 * Sets {@code exclude} and set excludes after getExclude from the configuration properties on the symphony portal
+	 *
+	 * @param exclude the {@code java.lang.String} field
+	 */
+	public void setExclude(String exclude) {
+		this.exclude = exclude;
+		if (!StringUtils.isNullOrEmpty(exclude)) {
+			List<String> list;
+			list = Arrays.asList(exclude.split(WebClientConstant.COMMA));
+			for (int i = 0; i < list.size(); i++) {
+				excludedList.add(capitalize(list.get(i).trim().replace(WebClientConstant.NUMBER, WebClientConstant.SPACE)));
+			}
+		}
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * <p>
 	 * This method is called by Symphony to get the list of statistics to be displayed
@@ -97,25 +141,27 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				String bodyResponse = null;
 				String contentType = null;
 				String response = doGet(this.URI);
-				int lenStart = response.indexOf(WebClientConstant.SEMICOLON);
-				int lenEnd = response.lastIndexOf(WebClientConstant.SEMICOLON);
-				if (lenStart == -1) {
+				int lenStatusCode = response.indexOf(WebClientConstant.SEMICOLON);
+				int lenDataBody = response.lastIndexOf(WebClientConstant.SEMICOLON);
+				if (lenStatusCode == -1) {
 					statusCode = Integer.parseInt(response);
 				} else {
-					statusCode = Integer.parseInt(response.substring(0, lenStart));
+					statusCode = Integer.parseInt(response.substring(0, lenStatusCode));
 				}
 				if (!HttpStatus.containsKey(statusCode)) {
 					throw new ResourceNotReachableException("Response status code not in range");
 				}
 				if (Boolean.TRUE.equals(isParseContent)) {
-					if (lenStart != lenEnd && lenEnd != -1) {
-						bodyResponse = response.substring(lenStart + 1, lenEnd);
-						contentType = response.substring(lenEnd + 1, response.length());
+					if (lenDataBody != -1 && lenStatusCode != lenDataBody) {
+						bodyResponse = response.substring(lenStatusCode + 1, lenDataBody);
+						contentType = response.substring(lenDataBody + 1);
+					} else {
+						bodyResponse = response.substring(lenStatusCode + 1);
 					}
-					// handle 2xx cases parsing data received from the device
-					if (200 <= statusCode && statusCode < 300 && !StringUtils.isNullOrEmpty(bodyResponse) && Boolean.TRUE.equals(isContentTypeInvalid(contentType))) {
-						populateInformationFromData(stats, bodyResponse);
-					}
+				}
+				// handle 2xx cases parsing data received from the device
+				if (200 <= statusCode && statusCode < 300 && bodyResponse != null && contentType != null && Boolean.TRUE.equals(isContentTypeInvalid(contentType))) {
+					populateInformationFromData(stats, bodyResponse);
 				}
 			} catch (Exception exc) {
 				String errorMessage = exc.getMessage();
@@ -170,11 +216,13 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
-	 * Return the status code.
-	 *
 	 * {@inheritDoc}
+	 * <p>
+	 * Get data from uri path
 	 *
-	 * @return This returns the status code.
+	 * @param uri the uri is the path get from the configuration properties on the symphony portal
+	 * @return String This returns the status code and dataBody if the response get body not null
+	 * @throws Exception if getting information from the Uri failed
 	 */
 	@Override
 	public String doGet(String uri) throws Exception {
@@ -187,15 +235,34 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 
 		HttpGet request = new HttpGet(getUri);
 		HttpResponse response = null;
-
+		String dataBody = null;
+		String contentType = WebClientConstant.INVALID;
 		try {
 			response = client.execute(request);
+			if (response.getEntity() != null && Boolean.TRUE.equals(isParseContent)) {
+				dataBody = EntityUtils.toString(response.getEntity());
+				contentType = response.getEntity().getContentType().getValue();
+			}
 		} finally {
 			if (response instanceof CloseableHttpResponse) {
 				((CloseableHttpResponse) response).close();
 			}
 		}
-		return String.valueOf(response.getStatusLine().getStatusCode());
+		StringBuilder stringBuilder = new StringBuilder();
+		stringBuilder.append(response.getStatusLine().getStatusCode());
+		if (!StringUtils.isNullOrEmpty(dataBody) && Boolean.TRUE.equals(isParseContent)) {
+			stringBuilder.append(WebClientConstant.SEMICOLON);
+			stringBuilder.append(dataBody);
+			if (!StringUtils.isNullOrEmpty(contentType)) {
+				int len = contentType.indexOf(WebClientConstant.SEMICOLON);
+				if (len != -1) {
+					contentType = contentType.substring(0, len);
+				}
+				stringBuilder.append(WebClientConstant.SEMICOLON);
+				stringBuilder.append(contentType);
+			}
+		}
+		return stringBuilder.toString();
 	}
 
 	/**
