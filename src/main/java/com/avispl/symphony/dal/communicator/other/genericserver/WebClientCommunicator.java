@@ -114,7 +114,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			List<String> list;
 			list = Arrays.asList(exclude.split(WebClientConstant.COMMA));
 			for (int i = 0; i < list.size(); i++) {
-				excludedList.add(capitalize(list.get(i).trim().replace(WebClientConstant.NUMBER, WebClientConstant.SPACE)));
+				excludedList.add(capitalize(list.get(i).trim()));
 			}
 		}
 	}
@@ -329,7 +329,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			return false;
 		} else {
 			String isParseContentData = parseContent.toLowerCase();
-			//if parseContent is not invalid
 			if (!WebClientConstant.TRUE.equals(isParseContentData) && !WebClientConstant.FALSE.equals(isParseContentData)) {
 				throw new ResourceNotReachableException("The parseContent has a boolean data type (true or false). Please re-enter parseContent: " + parseContent);
 			}
@@ -377,7 +376,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		if (len == -1 && contentTypes.contains(contentType)) {
 			isSupportContentType = false;
 		} else {
-			if (contentTypes.contains(contentType.substring(len)) || contentTypes.contains(contentType.substring((len + 1), contentType.length()))) {
+			if (contentTypes.contains(contentType.substring(0, len)) || contentTypes.contains(contentType.substring((len + 1)))) {
 				isSupportContentType = false;
 			}
 		}
@@ -395,15 +394,16 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		try {
 			JsonNode deviceInformation = mapper.readTree(data);
 			parseInformationByJson(stats, deviceInformation);
-			stats.put(WebClientConstant.CONTENT_TYPE, WebClientConstant.JSON);
+			if (stats.size() > 0) {
+				stats.put(WebClientConstant.CONTENT_TYPE, WebClientConstant.JSON);
+			}
 			return stats;
 		} catch (Exception e) {
 			try {
 				//parseInformationByXML
 				stats.put(WebClientConstant.CONTENT_TYPE, WebClientConstant.XML);
 				return stats;
-			} catch (
-					Exception exc) {
+			} catch (Exception exc) {
 				stats.put(WebClientConstant.CONTENT_TYPE, WebClientConstant.INVALID);
 				return stats;
 			}
@@ -463,19 +463,44 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param key the key is field name in the statistics
 	 */
 	private void contributeJsonArrayValue(Map<String, String> stats, String parentName, JsonNode data, String key) {
-		//continue
+		List<String> listStringData = new ArrayList<>();
+		for (int i = 0; i < data.size(); i++) {
+			JsonNode jsonNodeItem = data.get(i);
+			if (!jsonNodeItem.isNull() && !jsonNodeItem.isObject() && !jsonNodeItem.isArray()) {
+				String xmlValue = jsonNodeItem.isTextual() ? jsonNodeItem.textValue() : jsonNodeItem.toString();
+				if (!StringUtils.isNullOrEmpty(xmlValue)) {
+					listStringData.add(xmlValue);
+				}
+			}
+		}
+		if (!listStringData.isEmpty()) {
+			//remove the character "[" at first and "]" at the end in array list
+			String jsonValue = listStringData.toString().substring(1, listStringData.toString().length() - 1);
+			addKeyAndValueIntoStatistics(stats, parentName, key, jsonValue);
+		}
 	}
 
 	/**
 	 * Parsing data form json object
-	 * The function only supports parsing data in the form of strings, numbers, text and boolean
+	 * The function only supports parsing data in the form of strings, numbers, text, boolean and array
 	 *
 	 * @param stats the stats are list statistic of the device
 	 * @param data the data is an object to be parsed
 	 * @param parentName the parentName is the parent name of Object
 	 */
 	private void contributeJsonValue(Map<String, String> stats, JsonNode data, String parentName) {
-		//continue
+		Iterator<Entry<String, JsonNode>> fields = data.fields();
+		while (fields.hasNext()) {
+			Map.Entry<String, JsonNode> field = fields.next();
+			String jsonName = field.getKey();
+			JsonNode jsonValue = field.getValue();
+			if (jsonValue.isArray()) {
+				contributeJsonArrayValue(stats, parentName, jsonValue, jsonName);
+			} else if (isSupportedJsonFormat(field) && !jsonValue.isObject()) {
+				String value = jsonValue.isTextual() ? jsonValue.textValue() : jsonValue.toString();
+				addKeyAndValueIntoStatistics(stats, parentName, jsonName, value);
+			}
+		}
 	}
 
 	/**
