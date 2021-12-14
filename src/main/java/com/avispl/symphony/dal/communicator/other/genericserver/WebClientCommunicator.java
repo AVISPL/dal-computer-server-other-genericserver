@@ -11,10 +11,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 import java.util.regex.Matcher;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.ProtocolException;
 import org.apache.http.client.HttpClient;
@@ -46,10 +49,12 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private String URI;
 	private String exclude;
 	private String parseContent;
-	private Boolean isParseContent;
+	private boolean isParseContent;
 	private String baseRequestUrl;
 	private List<String> excludedList = new ArrayList<>();
 	private ObjectMapper mapper = new ObjectMapper();
+	final String statusCodeAndDataBody = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
+	final String dataBodyAndContentType = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 
 	/**
 	 * Constructor
@@ -110,13 +115,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 */
 	public void setExclude(String exclude) {
 		this.exclude = exclude;
-		if (!StringUtils.isNullOrEmpty(exclude)) {
-			List<String> list;
-			list = Arrays.asList(exclude.split(WebClientConstant.COMMA));
-			for (int i = 0; i < list.size(); i++) {
-				excludedList.add(capitalize(list.get(i).trim()));
-			}
-		}
 	}
 
 	/**
@@ -141,27 +139,33 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				String bodyResponse = null;
 				String contentType = null;
 				String response = doGet(this.URI);
-				int lenStatusCode = response.indexOf(WebClientConstant.SEMICOLON);
-				int lenDataBody = response.lastIndexOf(WebClientConstant.SEMICOLON);
-				if (lenStatusCode == -1) {
+				int lenStatusCode = response.indexOf(statusCodeAndDataBody);
+				int lenDataBody = response.indexOf(dataBodyAndContentType);
+				if (lenDataBody == -1) {
 					statusCode = Integer.parseInt(response);
 				} else {
-					statusCode = Integer.parseInt(response.substring(0, lenStatusCode));
+					if (lenStatusCode != -1) {
+						statusCode = Integer.parseInt(response.substring(0, lenStatusCode));
+					} else {
+						statusCode = Integer.parseInt(response.substring(0, lenDataBody));
+					}
 				}
 				if (!HttpStatus.containsKey(statusCode)) {
 					throw new ResourceNotReachableException("Response status code not in range");
 				}
-				if (Boolean.TRUE.equals(isParseContent)) {
-					if (lenDataBody != -1 && lenStatusCode != lenDataBody) {
-						bodyResponse = response.substring(lenStatusCode + 1, lenDataBody);
-						contentType = response.substring(lenDataBody + 1);
-					} else {
-						bodyResponse = response.substring(lenStatusCode + 1);
+				if (isParseContent) {
+					contentType = response.substring(lenDataBody + dataBodyAndContentType.length());
+					if (contentType.equals(WebClientConstant.INVALID) || !isContentTypeValid(contentType)) {
+						throw new ResourceNotReachableException("Error the content type invalid");
 					}
-				}
-				// handle 2xx cases parsing data received from the device
-				if (200 <= statusCode && statusCode < 300 && bodyResponse != null && contentType != null && Boolean.TRUE.equals(isContentTypeInvalid(contentType))) {
-					populateInformationFromData(stats, bodyResponse);
+					if (lenStatusCode != -1) {
+						bodyResponse = response.substring(lenStatusCode + statusCodeAndDataBody.length(), lenDataBody);
+					}
+					// handle 2xx cases parsing data received from the device
+					if (200 <= statusCode && statusCode < 300) {
+						getExcludeList(exclude);
+						populateInformationFromData(stats, bodyResponse);
+					}
 				}
 			} catch (Exception exc) {
 				String errorMessage = exc.getMessage();
@@ -180,14 +184,26 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			}
 			uriStatusMessage = generateResponseMessage(statusCode);
 			stats.put(WebClientConstant.URI_STATUS, uriStatusMessage);
-			if (Boolean.TRUE.equals(isParseContent)) {
-				stats.putIfAbsent(WebClientConstant.CONTENT_TYPE, WebClientConstant.INVALID);
-			}
 		} else {
 			stats.put(WebClientConstant.URI_STATUS, WebClientConstant.NOT_CONFIGURED);
 		}
 		extStats.setStatistics(stats);
 		return Collections.singletonList(extStats);
+	}
+
+	/**
+	 * Get list exclude by the string exclude
+	 *
+	 * @param exclude the exclude is the keyword list will be removed from the statistics list
+	 */
+	private void getExcludeList(String exclude) {
+		if (!StringUtils.isNullOrEmpty(exclude)) {
+			List<String> list;
+			list = Arrays.asList(exclude.split(WebClientConstant.COMMA));
+			for (int i = 0; i < list.size(); i++) {
+				excludedList.add(capitalize(list.get(i).trim()).replace(WebClientConstant.NUMBER, ""));
+			}
+		}
 	}
 
 	@Override
@@ -239,9 +255,13 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		String contentType = WebClientConstant.INVALID;
 		try {
 			response = client.execute(request);
-			if (response.getEntity() != null && Boolean.TRUE.equals(isParseContent)) {
-				dataBody = EntityUtils.toString(response.getEntity());
-				contentType = response.getEntity().getContentType().getValue();
+			HttpEntity httpEntity = response.getEntity();
+			if (httpEntity != null && isParseContent) {
+				dataBody = EntityUtils.toString(httpEntity);
+				Header header = httpEntity.getContentType();
+				if (header != null && header.getValue() != null) {
+					contentType = header.getValue();
+				}
 			}
 		} finally {
 			if (response instanceof CloseableHttpResponse) {
@@ -250,17 +270,13 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		}
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.append(response.getStatusLine().getStatusCode());
-		if (!StringUtils.isNullOrEmpty(dataBody) && Boolean.TRUE.equals(isParseContent)) {
-			stringBuilder.append(WebClientConstant.SEMICOLON);
-			stringBuilder.append(dataBody);
-			if (!StringUtils.isNullOrEmpty(contentType)) {
-				int len = contentType.indexOf(WebClientConstant.SEMICOLON);
-				if (len != -1) {
-					contentType = contentType.substring(0, len);
-				}
-				stringBuilder.append(WebClientConstant.SEMICOLON);
-				stringBuilder.append(contentType);
+		if (isParseContent) {
+			if (!StringUtils.isNullOrEmpty(dataBody)) {
+				stringBuilder.append(statusCodeAndDataBody);
+				stringBuilder.append(dataBody);
 			}
+			stringBuilder.append(dataBodyAndContentType);
+			stringBuilder.append(contentType);
 		}
 		return stringBuilder.toString();
 	}
@@ -340,45 +356,38 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
-	 * Check content type is invalid
+	 * Check content type is valid
 	 *
 	 * @param contentType the contentType is content-type of response
 	 * @return boolean the return boolean true or false
 	 */
-	private Boolean isContentTypeInvalid(String contentType) {
-		boolean isSupportContentType = true;
+	private boolean isContentTypeValid(String contentType) {
 		List<String> contentTypeList;
-		List<String> contentTypes = Arrays.asList(WebClientConstant.VIDEO, WebClientConstant.AUDIO, WebClientConstant.IMAGE);
+		boolean isContentTypeValid = true;
 		if (contentType.contains(WebClientConstant.COMMA)) {
 			//handle case multi-option content type
 			contentTypeList = Arrays.asList(contentType.split(WebClientConstant.COMMA));
-			for (int i = 0; i < contentTypeList.size(); i++) {
-				isSupportContentType = isSupportContentTypeFormat(contentTypeList.get(i).trim(), contentTypes);
-				if (!isSupportContentType) {
+			for (String contentTypeItem : contentTypeList) {
+				if (!isSupportContentTypeFormat(contentTypeItem.trim())) {
+					isContentTypeValid = false;
 					break;
 				}
 			}
-		} else {
-			isSupportContentType = isSupportContentTypeFormat(contentType, contentTypes);
+		} else if (!isSupportContentTypeFormat(contentType)) {
+			isContentTypeValid = false;
 		}
-		return isSupportContentType;
+		return isContentTypeValid;
 	}
 
 	/**
 	 * Check the content type is supported
 	 *
 	 * @param contentType the contentType is content-type of response
-	 * @param contentTypes the contentTypes are list content-type nonsupport parse data
 	 */
-	private boolean isSupportContentTypeFormat(String contentType, List<String> contentTypes) {
+	private boolean isSupportContentTypeFormat(String contentType) {
 		boolean isSupportContentType = true;
-		int len = contentType.indexOf("/");
-		if (len == -1 && contentTypes.contains(contentType)) {
+		if (contentType.contains(WebClientConstant.IMAGE) || contentType.contains(WebClientConstant.VIDEO) || contentType.contains(WebClientConstant.AUDIO)) {
 			isSupportContentType = false;
-		} else {
-			if (contentTypes.contains(contentType.substring(0, len)) || contentTypes.contains(contentType.substring((len + 1)))) {
-				isSupportContentType = false;
-			}
 		}
 		return isSupportContentType;
 	}
@@ -390,22 +399,16 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param data the data is value after getting data by the request
 	 * @return stats This returns the map key and value of statistic
 	 */
-	private Map<String, String> populateInformationFromData(Map<String, String> stats, String data) {
+	private void populateInformationFromData(Map<String, String> stats, String data) {
 		try {
 			JsonNode deviceInformation = mapper.readTree(data);
 			parseInformationByJson(stats, deviceInformation);
-			if (stats.size() > 0) {
-				stats.put(WebClientConstant.CONTENT_TYPE, WebClientConstant.JSON);
-			}
-			return stats;
 		} catch (Exception e) {
 			try {
 				//parseInformationByXML
 				stats.put(WebClientConstant.CONTENT_TYPE, WebClientConstant.XML);
-				return stats;
 			} catch (Exception exc) {
-				stats.put(WebClientConstant.CONTENT_TYPE, WebClientConstant.INVALID);
-				return stats;
+				throw new ResourceNotReachableException("Error when parsing data");
 			}
 		}
 	}
@@ -420,11 +423,12 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		Iterator<Entry<String, JsonNode>> fields = data.fields();
 		while (fields.hasNext()) {
 			Map.Entry<String, JsonNode> field = fields.next();
+			String jsonName = field.getKey();
+			JsonNode jsonValue = field.getValue();
 			if (!isSupportedJsonFormat(field)) {
 				continue;
 			}
-			String jsonName = field.getKey();
-			JsonNode jsonValue = field.getValue();
+			jsonName = jsonName.replace(WebClientConstant.NUMBER, "");
 			if (jsonValue.isArray()) {
 				contributeJsonArrayValue(stats, "", jsonValue, jsonName);
 			} else {
@@ -482,10 +486,10 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 
 	/**
 	 * Parsing data form json object
-	 * The function only supports parsing data in the form of strings, numbers, text, boolean and array
+	 * The function only supports parsing data in the form of strings, numbers, text and boolean
 	 *
 	 * @param stats the stats are list statistic of the device
-	 * @param data the data is an object to be parsed
+	 * @param data data the data is an object to be parsed
 	 * @param parentName the parentName is the parent name of Object
 	 */
 	private void contributeJsonValue(Map<String, String> stats, JsonNode data, String parentName) {
@@ -494,6 +498,10 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			Map.Entry<String, JsonNode> field = fields.next();
 			String jsonName = field.getKey();
 			JsonNode jsonValue = field.getValue();
+			if(!isSupportedJsonFormat(field)){
+				continue;
+			}
+			jsonName = jsonName.replace(WebClientConstant.NUMBER, "");
 			if (jsonValue.isArray()) {
 				contributeJsonArrayValue(stats, parentName, jsonValue, jsonName);
 			} else if (isSupportedJsonFormat(field) && !jsonValue.isObject()) {
@@ -516,9 +524,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value) {
 		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value)) {
 			if (StringUtils.isNullOrEmpty(parentName)) {
-				stats.put(capitalize(key.trim()), value);
+				stats.put(capitalize(key), value);
 			} else {
-				stats.put(capitalize(parentName.trim()) + WebClientConstant.NUMBER + capitalize(key.trim()), value);
+				stats.put(capitalize(parentName) + WebClientConstant.NUMBER + capitalize(key), value);
 			}
 		}
 	}
