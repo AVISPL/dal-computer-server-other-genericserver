@@ -48,7 +48,7 @@ import com.avispl.symphony.dal.util.StringUtils;
  *
  * @author Duy Nguyen, Ivan
  * @version 1.0.0
- * @since 1.2.0
+ * @since 1.0.1
  */
 public class WebClientCommunicator extends RestCommunicator implements Monitorable {
 
@@ -208,7 +208,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 						throw new ResourceNotReachableException(errorMessage);
 					}
 				} else {
-					throw new ResourceNotReachableException(errorMessage);
+					throw new ResourceNotReachableException(errorMessage, exc);
 				}
 			}
 			uriStatusMessage = generateResponseMessage(statusCode);
@@ -375,6 +375,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			parseInformationByJson(stats, deviceInformation);
 		} catch (Exception e) {
 			try {
+				data = data.replaceAll(WebClientConstant.LINE_SEPARATOR, "");
 				Document doc = documentBuilder.parse(new InputSource(new StringReader(data)));
 				NodeList childNodes = doc.getChildNodes();
 				if (childNodes.getLength() > 0 && childNodes.item(0).getChildNodes().getLength() > 1) {
@@ -382,7 +383,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 					parseInformationByXml(listElementsByTagName, stats);
 				}
 			} catch (Exception exc) {
-				throw new ResourceNotReachableException("Error when parsing data, the response is not an supported JSON or XML");
+				throw new ResourceNotReachableException("Error when parsing data, the response is not an supported JSON or XML", exc);
 			}
 		}
 	}
@@ -520,16 +521,15 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			}
 
 			if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
-				// handle case has many identical child elements
-				if (childNodes.getLength() == 1) {
+				if (!hasChildElements(nodeItem)) {
 					String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, childNodes.item(0).getNodeValue());
 					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML);
 				}
 				continue;
 			}
+
 			if (hasChildElements(nodeItem)) {
-				// parsing data from the second time onwards is parseChildElementTag is true
-				attributeXmlTagValue(childNodes, stats, firstLevelTagName, true);
+				handleSecondLevelXML(childNodes, stats, firstLevelTagName);
 			} else {
 				String value = nodeItem.getTextContent();
 				addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value);
@@ -583,17 +583,12 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 *
 	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
 	 * @param nodeItem the nodeItem is child current of nodeList
-	 * @param parseChildElementTag the parseChildElementTag is boolean data if XML has child element is parseChildElementTag is true
+	 * @param isSecondLevel the isSecondLevel is boolean data if XML has child element is isSecondLevel is true
 	 * @return nextStep this return true if correct rules else return false
 	 */
-	private boolean isSupportedXMLFormat(NodeList nodeList, Node nodeItem, boolean parseChildElementTag) {
-		boolean nextStep = true;
-		// get all tagName of XML will be not support
-		List<String> listTagNameNoSupportParsingXML = checkTagNameNoSupportParseXML(nodeList, parseChildElementTag);
-		if (listTagNameNoSupportParsingXML.contains(nodeItem.getNodeName())) {
-			nextStep = false;
-		}
-		return nextStep;
+	private boolean isSupportedXMLFormat(NodeList nodeList, Node nodeItem, boolean isSecondLevel) {
+		List<String> unsupportedTagNameList = getUnsupportedTagNameList(nodeList, isSecondLevel);
+		return !unsupportedTagNameList.contains(nodeItem.getNodeName());
 	}
 
 	/**
@@ -602,25 +597,28 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
 	 * @param stats the stats are list statistic of the device
 	 * @param parentName the parentName is tag Name of the parent element
-	 * @param parseChildElementTag the parseChildElementTag is boolean if XML has child element is parseChildElementTag is true
 	 */
-	private void attributeXmlTagValue(NodeList nodeList, Map<String, String> stats, String parentName, boolean parseChildElementTag) {
+	private void handleSecondLevelXML(NodeList nodeList, Map<String, String> stats, String parentName) {
 		for (Node nodeItem : iterable(nodeList)) {
-			String tagName = nodeItem.getNodeName();
-			if (!excludedList.contains(tagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
-				if (!isSupportedXMLFormat(nodeList, nodeItem, parseChildElementTag)) {
-					String value = nodeItem.getChildNodes().item(0).getNodeValue();
-					if (nodeItem.getChildNodes().getLength() == 1 && !StringUtils.isNullOrEmpty(value)) {
-						String valueXML = getAndUpdateValueByTagNameXML(stats, parentName, tagName, nodeItem.getChildNodes().item(0).getNodeValue());
-						addKeyAndValueIntoStatistics(stats, parentName, tagName, valueXML);
-					}
-					continue;
-				}
-				if (nodeItem.getChildNodes().getLength() == 1) {
-					String xmlValue = getAndUpdateValueByTagNameXML(stats, parentName, tagName, nodeItem.getTextContent());
-					addKeyAndValueIntoStatistics(stats, parentName, tagName, xmlValue);
-				}
+			String secondLevelTagName = nodeItem.getNodeName();
+
+			if (excludedList.contains(secondLevelTagName.trim())) {
+				continue;
 			}
+
+			if (!isSupportedXMLFormat(nodeList, nodeItem, true)) {
+				String value = nodeItem.getChildNodes().item(0).getNodeValue();
+				if (nodeItem.getChildNodes().getLength() == 1 && !StringUtils.isNullOrEmpty(value)) {
+					String valueXML = getAndUpdateValueByTagNameXML(stats, parentName, secondLevelTagName, nodeItem.getChildNodes().item(0).getNodeValue());
+					addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, valueXML);
+				}
+				continue;
+			}
+			if (nodeItem.getChildNodes().getLength() == 1) {
+				String xmlValue = getAndUpdateValueByTagNameXML(stats, parentName, secondLevelTagName, nodeItem.getTextContent());
+				addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, xmlValue);
+			}
+
 		}
 	}
 
@@ -635,7 +633,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param value the value is field String second in the map<String,String>
 	 */
 	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value) {
-		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value) && !excludedList.contains(key.trim())) {
+		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value)) {
 			if (StringUtils.isNullOrEmpty(parentName)) {
 				stats.put(key, value);
 			} else {
@@ -671,30 +669,27 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * Check element tag name of XML if correct rules returns list tagName no support parse XML
 	 *
 	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
-	 * @param parseChildElementTag the parseChildElementTag is boolean if XML has child element is parseChildElementTag is true
+	 * @param isSecondLevel the isSecondLevel is boolean if XML has child element is isSecondLevel is true
 	 * @return List<String> the List<String> is list name of tag XML
 	 */
-	private List<String> checkTagNameNoSupportParseXML(NodeList nodeList, boolean parseChildElementTag) {
-		Map<String, Boolean> mapTagName = new HashMap<>();
-		List<String> listTagName = new ArrayList<>();
+	private List<String> getUnsupportedTagNameList(NodeList nodeList, boolean isSecondLevel) {
+		Map<String, Boolean> tagNameToIsDuplicated = new HashMap<>();
+		List<String> listUnsupportedTagName = new ArrayList<>();
+
 		for (Node nodeItem : iterable(nodeList)) {
 			String tagName = nodeItem.getNodeName();
-			boolean tagNameExists = false;
-			if (mapTagName.containsKey(tagName)) {
-				tagNameExists = true;
-			}
-			mapTagName.put(tagName, tagNameExists);
-			if (parseChildElementTag && nodeItem.hasChildNodes() && nodeItem.getChildNodes().item(0).hasChildNodes()) {
-				listTagName.add(tagName);
+			boolean isExists = tagNameToIsDuplicated.containsKey(tagName);
+			tagNameToIsDuplicated.put(tagName, isExists);
+			if (isSecondLevel && hasChildElements(nodeItem)) {
+				listUnsupportedTagName.add(tagName);
 			}
 		}
-		for (Map.Entry<String, Boolean> itemTagName : mapTagName.entrySet()) {
-			//return list name be not supported parse data
+		for (Map.Entry<String, Boolean> itemTagName : tagNameToIsDuplicated.entrySet()) {
 			if (Boolean.TRUE.equals(itemTagName.getValue())) {
-				listTagName.add(itemTagName.getKey());
+				listUnsupportedTagName.add(itemTagName.getKey());
 			}
 		}
-		return listTagName;
+		return listUnsupportedTagName;
 	}
 
 	/**

@@ -22,6 +22,7 @@ public final class WebClientConstant {
 	public static final String URI_STATUS = "URI Status";
 	public static final String NOT_CONFIGURED = "Not Configured";
 	public static final Pattern HTTP_STATUS_CODE_PATTERN = Pattern.compile("(\\d{3})");
+	public static final String LINE_SEPARATOR = "[\\r\\n\\t]";
 	public static final String DISALLOW_DOCTYPE_DECL = "http://apache.org/xml/features/disallow-doctype-decl";
 	public static final String EXTERNAL_GENERAL_ENTITIES = "http://xml.org/sax/features/external-general-entities";
 	public static final String EXTERNAL_PARAMETER_ENTITIES = "http://xml.org/sax/features/external-parameter-entities";
