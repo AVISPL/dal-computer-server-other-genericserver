@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.regex.Matcher;
 
@@ -381,7 +382,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 					parseInformationByXml(listElementsByTagName, stats);
 				}
 			} catch (Exception exc) {
-				throw new ResourceNotReachableException("Error when parsing data, the response is not an JSON or XML");
+				throw new ResourceNotReachableException("Error when parsing data, the response is not an supported JSON or XML");
 			}
 		}
 	}
@@ -510,29 +511,52 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
 	 */
 	private void parseInformationByXml(NodeList nodeList, Map<String, String> stats) {
-		for (int i = 0; i < nodeList.getLength(); i++) {
-			Node nodeItem = nodeList.item(i);
-			String tagName = nodeItem.getNodeName();
-			if (!excludedList.contains(tagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
+		for (Node nodeItem : iterable(nodeList)) {
+			String firstLevelTagName = nodeItem.getNodeName();
+			if (!excludedList.contains(firstLevelTagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
 				// parsing data the first(tag name root) is parseChildElementTag = false
 				if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
 					// handle case has many identical child elements
 					if (nodeItem.getChildNodes().getLength() == 1) {
-						String valueXML = getAndUpdateValueByTagNameXML(stats, "", tagName, nodeItem.getChildNodes().item(0).getNodeValue());
-						addKeyAndValueIntoStatistics(stats, "", tagName, valueXML);
+						String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, nodeItem.getChildNodes().item(0).getNodeValue());
+						addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML);
 					}
 					continue;
 				}
-				NodeList nodeListChild = nodeItem.getChildNodes();
-				if (nodeListChild.getLength() > 1) {
+				if (nodeItem.hasChildNodes()) {
 					// parsing data from the second time onwards is parseChildElementTag is true
-					attributeXmlTagValue(nodeListChild, stats, tagName, true);
+					attributeXmlTagValue(nodeItem.getChildNodes(), stats, firstLevelTagName, true);
 				} else {
 					String value = nodeItem.getTextContent();
-					addKeyAndValueIntoStatistics(stats, "", tagName, value);
+					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value);
 				}
 			}
 		}
+	}
+
+	/**
+	 * Lambda expression (for creating a new Iterable) and default method to use for-each in {@code NodeList}
+	 *
+	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
+	 * @return Iterable<Node>
+	 */
+	public static Iterable<Node> iterable(final NodeList nodeList) {
+		return () -> new Iterator<Node>() {
+			private int index = 0;
+
+			@Override
+			public boolean hasNext() {
+				return index < nodeList.getLength();
+			}
+
+			@Override
+			public Node next() {
+				if (!hasNext()) {
+					throw new NoSuchElementException();
+				}
+				return nodeList.item(index++);
+			}
+		};
 	}
 
 	/**
