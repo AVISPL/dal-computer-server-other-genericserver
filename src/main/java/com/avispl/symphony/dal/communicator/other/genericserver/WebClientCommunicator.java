@@ -489,17 +489,17 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		Iterator<Entry<String, JsonNode>> fields = value.fields();
 		while (fields.hasNext()) {
 			Map.Entry<String, JsonNode> field = fields.next();
-			String jsonName = field.getKey();
+			String secondLevelKey = field.getKey();
 			JsonNode secondLevelValue = field.getValue();
 			if (!isSupportedJsonFormat(field)) {
 				continue;
 			}
-			jsonName = jsonName.replace(WebClientConstant.HASH_SIGN, "");
+			secondLevelKey = secondLevelKey.replace(WebClientConstant.HASH_SIGN, "");
 			if (secondLevelValue.isArray()) {
-				contributeJsonArrayValue(stats, parentName, secondLevelValue, jsonName);
+				contributeJsonArrayValue(stats, parentName, secondLevelValue, secondLevelKey);
 			} else if (isSupportedJsonFormat(field) && !secondLevelValue.isObject()) {
 				String val = secondLevelValue.isTextual() ? secondLevelValue.textValue() : secondLevelValue.toString();
-				addKeyAndValueIntoStatistics(stats, parentName, jsonName, val);
+				addKeyAndValueIntoStatistics(stats, parentName, secondLevelKey, val);
 			}
 		}
 	}
@@ -513,26 +513,44 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private void parseInformationByXml(NodeList nodeList, Map<String, String> stats) {
 		for (Node nodeItem : iterable(nodeList)) {
 			String firstLevelTagName = nodeItem.getNodeName();
-			if (!excludedList.contains(firstLevelTagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
-				// parsing data the first(tag name root) is parseChildElementTag = false
-				NodeList childNodes = nodeItem.getChildNodes();
-				if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
-					// handle case has many identical child elements
-					if (childNodes.getLength() == 1) {
-						String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, childNodes.item(0).getNodeValue());
-						addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML);
-					}
-					continue;
+			NodeList childNodes = nodeItem.getChildNodes();
+
+			if (excludedList.contains(firstLevelTagName.trim())) {
+				continue;
+			}
+
+			if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
+				// handle case has many identical child elements
+				if (childNodes.getLength() == 1) {
+					String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, childNodes.item(0).getNodeValue());
+					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML);
 				}
-				if (childNodes.getLength() > 1) {
-					// parsing data from the second time onwards is parseChildElementTag is true
-					attributeXmlTagValue(childNodes, stats, firstLevelTagName, true);
-				} else {
-					String value = nodeItem.getTextContent();
-					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value);
-				}
+				continue;
+			}
+			if (hasChildElements(nodeItem)) {
+				// parsing data from the second time onwards is parseChildElementTag is true
+				attributeXmlTagValue(childNodes, stats, firstLevelTagName, true);
+			} else {
+				String value = nodeItem.getTextContent();
+				addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value);
 			}
 		}
+	}
+
+	/**
+	 * Check the XML element contains another XML element or not
+	 *
+	 * @param node the XML element that needs to check
+	 * @return true/false true: hasChild, false: noChild
+	 */
+	public static boolean hasChildElements(Node node) {
+		NodeList children = node.getChildNodes();
+		for (int i = 0; i < children.getLength(); i++) {
+			if (children.item(i).getNodeType() == Node.ELEMENT_NODE) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -570,7 +588,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 */
 	private boolean isSupportedXMLFormat(NodeList nodeList, Node nodeItem, boolean parseChildElementTag) {
 		boolean nextStep = true;
-		//get all tagName of XML will be not support
+		// get all tagName of XML will be not support
 		List<String> listTagNameNoSupportParsingXML = checkTagNameNoSupportParseXML(nodeList, parseChildElementTag);
 		if (listTagNameNoSupportParsingXML.contains(nodeItem.getNodeName())) {
 			nextStep = false;
@@ -587,9 +605,8 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param parseChildElementTag the parseChildElementTag is boolean if XML has child element is parseChildElementTag is true
 	 */
 	private void attributeXmlTagValue(NodeList nodeList, Map<String, String> stats, String parentName, boolean parseChildElementTag) {
-		for (int i = 0; i < nodeList.getLength(); i++) {
-			Node nodeItem = nodeList.item(i);
-			String tagName = nodeList.item(i).getNodeName();
+		for (Node nodeItem : iterable(nodeList)) {
+			String tagName = nodeItem.getNodeName();
 			if (!excludedList.contains(tagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
 				if (!isSupportedXMLFormat(nodeList, nodeItem, parseChildElementTag)) {
 					String value = nodeItem.getChildNodes().item(0).getNodeValue();
@@ -618,7 +635,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param value the value is field String second in the map<String,String>
 	 */
 	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value) {
-		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value)) {
+		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value) && !excludedList.contains(key.trim())) {
 			if (StringUtils.isNullOrEmpty(parentName)) {
 				stats.put(key, value);
 			} else {
@@ -660,14 +677,14 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private List<String> checkTagNameNoSupportParseXML(NodeList nodeList, boolean parseChildElementTag) {
 		Map<String, Boolean> mapTagName = new HashMap<>();
 		List<String> listTagName = new ArrayList<>();
-		for (int i = 0; i < nodeList.getLength(); i++) {
-			String tagName = nodeList.item(i).getNodeName();
+		for (Node nodeItem : iterable(nodeList)) {
+			String tagName = nodeItem.getNodeName();
 			boolean tagNameExists = false;
 			if (mapTagName.containsKey(tagName)) {
 				tagNameExists = true;
 			}
 			mapTagName.put(tagName, tagNameExists);
-			if (parseChildElementTag && nodeList.item(i).hasChildNodes() && nodeList.item(i).getChildNodes().item(0).hasChildNodes()) {
+			if (parseChildElementTag && nodeItem.hasChildNodes() && nodeItem.getChildNodes().item(0).hasChildNodes()) {
 				listTagName.add(tagName);
 			}
 		}
