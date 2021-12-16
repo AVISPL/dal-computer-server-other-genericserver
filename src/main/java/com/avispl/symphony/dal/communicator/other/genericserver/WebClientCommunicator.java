@@ -48,21 +48,24 @@ import com.avispl.symphony.dal.util.StringUtils;
  *
  * @author Duy Nguyen, Ivan
  * @version 1.0.0
- * @since 1.2.0
+ * @since 1.0.1
  */
 public class WebClientCommunicator extends RestCommunicator implements Monitorable {
 
 	/**
 	 * URI string that is used to check accessible.
-	 *@since 1.2.0
+	 *
+	 * @since 1.2.0
 	 */
 	private String URI;
 
 	/**
 	 * The exclude is configuration properties on the symphony portal
+	 *
 	 * @since 1.2.0
 	 */
 	private String exclude;
+	private final List<String> excludedList = new ArrayList<>();
 
 	/**
 	 * The parseContent is configuration properties on the symphony portal
@@ -70,10 +73,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @since 1.2.0
 	 */
 	private String parseContent;
-
 	private boolean isParseContent;
+
 	private String baseRequestUrl;
-	private final List<String> excludedList = new ArrayList<>();
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final DocumentBuilder documentBuilder = buildSecureDocumentBuilder();
 
@@ -82,71 +84,26 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private final String bodyAndContentTypeSeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 
 	/**
-	 * Retrieves {@code {@link #exclude }}
-	 *
-	 * @return value of {@link #exclude}
-	 * @since 1.2.0
-	 */
-	public String getExclude() {
-		return exclude;
-	}
-
-	/**
-	 * Retrieves {@code {@link #parseContent }}
-	 *
-	 * @return value of {@link #parseContent}
-	 * @since 1.2.0
-	 */
-	public String getParseContent() {
-		return parseContent;
-	}
-
-	/**
-	 * Sets {@code Content}
-	 * If set to “False” the adapter will not parse the content (regardless of the content type)
-	 * If set to “True” the adapter will parse content as indicated in this story.
-	 *
-	 * @param parseContent the {@code java.lang.String} field
-	 * @since 1.2.0
-	 */
-	public void setParseContent(String parseContent) {
-		this.parseContent = parseContent;
-	}
-
-	/**
-	 * Sets {@code exclude} and set excludes after getExclude from the configuration properties on the symphony portal
-	 *
-	 * @param exclude the {@code java.lang.String} field
-	 * @since 1.2.0
-	 */
-	public void setExclude(String exclude) {
-		this.exclude = exclude;
-	}
-
-
-	/**
 	 * WebClientCommunicator instantiation
 	 */
 	public WebClientCommunicator() throws ParserConfigurationException {
 		// WebClientCommunicator no-args constructor
 	}
 
-	/**
-	 * Retrieves {@code {@link #URI}}
-	 *
-	 * @return value of {@link #URI}
-	 */
-	public String getURI() {
-		return URI;
+	@Override
+	protected void internalInit() throws Exception {
+		super.internalInit();
+		buildBaseUrl();
 	}
 
 	/**
-	 * Sets {@code URI}
-	 *
-	 * @param URI the {@code java.lang.String} field
+	 * {@inheritDoc}
+	 * <p>
+	 * WebClientCommunicator doesn't require authentication
 	 */
-	public void setURI(String URI) {
-		this.URI = URI;
+	@Override
+	protected void authenticate() {
+		// WebClientCommunicator doesn't require authentication
 	}
 
 	/**
@@ -229,31 +186,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		return Collections.singletonList(extStats);
 	}
 
-	@Override
-	protected void internalInit() throws Exception {
-		super.internalInit();
-		buildBaseUrl();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * WebClientCommunicator doesn't require authentication
-	 */
-	@Override
-	protected void authenticate() {
-		// WebClientCommunicator doesn't require authentication
-	}
-
-	/**
-	 * Return a string with status code & its description
-	 *
-	 * @return String This returns the message as "<status code> <description>"
-	 */
-	private String generateResponseMessage(int statusCode) {
-		return statusCode + WebClientConstant.SPACE + HttpStatus.getDescription(statusCode);
-	}
-
 	/**
 	 * {@inheritDoc}
 	 * <p>
@@ -298,6 +230,75 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			}
 		}
 		return stringBuilder.toString();
+	}
+
+	/**
+	 * Retrieves {@code {@link #exclude }}
+	 *
+	 * @return value of {@link #exclude}
+	 * @since 1.2.0
+	 */
+	public String getExclude() {
+		return exclude;
+	}
+
+	/**
+	 * Retrieves {@code {@link #parseContent }}
+	 *
+	 * @return value of {@link #parseContent}
+	 * @since 1.2.0
+	 */
+	public String getParseContent() {
+		return parseContent;
+	}
+
+	/**
+	 * Sets {@code Content}
+	 * If set to “False” the adapter will not parse the content (regardless of the content type)
+	 * If set to “True” the adapter will parse content as indicated in this story.
+	 *
+	 * @param parseContent the {@code java.lang.String} field
+	 * @since 1.2.0
+	 */
+	public void setParseContent(String parseContent) {
+		this.parseContent = parseContent;
+	}
+
+	/**
+	 * Sets {@code exclude} and set excludes after getExclude from the configuration properties on the symphony portal
+	 *
+	 * @param exclude the {@code java.lang.String} field
+	 * @since 1.2.0
+	 */
+	public void setExclude(String exclude) {
+		this.exclude = exclude;
+	}
+
+	/**
+	 * Retrieves {@code {@link #URI}}
+	 *
+	 * @return value of {@link #URI}
+	 */
+	public String getURI() {
+		return URI;
+	}
+
+	/**
+	 * Sets {@code URI}
+	 *
+	 * @param URI the {@code java.lang.String} field
+	 */
+	public void setURI(String URI) {
+		this.URI = URI;
+	}
+
+	/**
+	 * Return a string with status code & its description
+	 *
+	 * @return String This returns the message as "<status code> <description>"
+	 */
+	private String generateResponseMessage(int statusCode) {
+		return statusCode + WebClientConstant.SPACE + HttpStatus.getDescription(statusCode);
 	}
 
 	/**
@@ -552,7 +553,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param node the XML element that needs to check
 	 * @return true/false true: hasChild, false: noChild
 	 */
-	public static boolean hasChildElements(Node node) {
+	private boolean hasChildElements(Node node) {
 		NodeList children = node.getChildNodes();
 		for (int i = 0; i < children.getLength(); i++) {
 			if (children.item(i).getNodeType() == Node.ELEMENT_NODE) {
@@ -568,7 +569,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
 	 * @return Iterable<Node>
 	 */
-	public static Iterable<Node> iterable(final NodeList nodeList) {
+	private static Iterable<Node> iterable(final NodeList nodeList) {
 		return () -> new Iterator<Node>() {
 			private int index = 0;
 
