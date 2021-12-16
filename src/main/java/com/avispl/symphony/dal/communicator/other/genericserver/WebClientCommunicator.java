@@ -515,17 +515,18 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			String firstLevelTagName = nodeItem.getNodeName();
 			if (!excludedList.contains(firstLevelTagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
 				// parsing data the first(tag name root) is parseChildElementTag = false
+				NodeList childNodes = nodeItem.getChildNodes();
 				if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
 					// handle case has many identical child elements
-					if (nodeItem.getChildNodes().getLength() == 1) {
-						String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, nodeItem.getChildNodes().item(0).getNodeValue());
+					if (childNodes.getLength() == 1) {
+						String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, childNodes.item(0).getNodeValue());
 						addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML);
 					}
 					continue;
 				}
-				if (nodeItem.hasChildNodes()) {
+				if (childNodes.getLength() > 1) {
 					// parsing data from the second time onwards is parseChildElementTag is true
-					attributeXmlTagValue(nodeItem.getChildNodes(), stats, firstLevelTagName, true);
+					attributeXmlTagValue(childNodes, stats, firstLevelTagName, true);
 				} else {
 					String value = nodeItem.getTextContent();
 					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value);
@@ -666,8 +667,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				tagNameExists = true;
 			}
 			mapTagName.put(tagName, tagNameExists);
-			//case the XML has element contents not text content
-			if (parseChildElementTag && nodeList.item(i).getChildNodes().getLength() > 1) {
+			if (parseChildElementTag && nodeList.item(i).hasChildNodes() && nodeList.item(i).getChildNodes().item(0).hasChildNodes()) {
 				listTagName.add(tagName);
 			}
 		}
