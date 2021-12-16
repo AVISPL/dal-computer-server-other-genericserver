@@ -4,7 +4,7 @@
 package com.avispl.symphony.dal.communicator.other.genericserver;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -27,9 +27,9 @@ import com.avispl.symphony.dal.communicator.HttpCommunicator;
  * Success as 2xx in response status code for different content types such as html, xml, jpg; API Error for status code out of range 1xx to 5xx
  * URI with full path and short path, protocol as http and https
  *
- * @author Ivan
+ * @author Duy Nguyen, Ivan
  * @version 1.0.0
- * @since 1.0.1
+ * @since 1.2.0
  */
 class WebClientCommunicatorTest {
 	private static final int HTTP_PORT = 8088;
@@ -566,7 +566,7 @@ class WebClientCommunicatorTest {
 	/**
 	 * Test parse data by json object get from the request
 	 *
-	 * Expect status code 200 with content type is Json and parse json object successfully
+	 * Expect JSON object parsing to be successful and status code 200 and Statistics of size 7
 	 */
 	@Test
 	void testParseDataFromJsonObjectSuccessfully() {
@@ -577,50 +577,116 @@ class WebClientCommunicatorTest {
 
 		assertEquals(7, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
-
-		for (Map.Entry<String, String> entry : stats.entrySet()) {
-			assertNotNull(entry.getValue());
-		}
+		assertEquals("Product 3", stats.get("Profile_information#ProdFullName"));
+		assertEquals("714.4", stats.get("Profile_information#HardwareID"));
+		assertEquals("3", stats.get("Profile_information#Brand"));
+		assertEquals("3", stats.get("Device"));
+		assertEquals("0, 2", stats.get("information"));
+		assertEquals("the address 02", stats.get("address_name"));
 	}
 
 	/**
 	 * Test parse data by json object get from the request and remove 2 field Brand and Version
 	 *
-	 * Expect size to be 5 stats because 2 Brand and Version fields in Exclusions were removed. Status code 200 with the content type of JSON and JSON object parsing successfully
+	 * Expect size to be 5 stats because 2 Brand and Device fields in exclude were removed. Status code 200 and JSON object parsing successfully
 	 */
 	@Test
 	void testParseDataFromJsonObjectAndRemoveTwoFieldInData() {
 		webClientCommunicator.setURI("/device-json");
 		webClientCommunicator.setParseContent("true");
-		webClientCommunicator.setExclude("Brand, ,Device");
+		webClientCommunicator.setExclude("Brand,Device");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 
 		assertEquals(5, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
+		assertNull(stats.get("Profile_information#Brand"));
+		assertNull("3", stats.get("Device"));
+		assertEquals("Product 3", stats.get("Profile_information#ProdFullName"));
+		assertEquals("714.4", stats.get("Profile_information#HardwareID"));
+		assertEquals("0, 2", stats.get("information"));
+		assertEquals("the address 02", stats.get("address_name"));
+	}
 
-		for (Map.Entry<String, String> entry : stats.entrySet()) {
-			assertNotNull(entry.getValue());
-		}
+	/**
+	 * Test parse data by the key json is empty.
+	 *
+	 * Expect status code 200 and JSON object parsing successfully and haven't the key json empty in the statistics
+	 */
+	@Test
+	void testParseDataWithTheKeyJsonIsEmpty() {
+		webClientCommunicator.setURI("/device-json-empty-key");
+		webClientCommunicator.setParseContent("true");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+
+		assertEquals(3, stats.size());
+		assertNull(stats.get(""));
+		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("device 03", stats.get("Device_name"));
+		assertEquals("the address 02", stats.get("address_name"));
+	}
+
+	/**
+	 * Test parse data with key json has hash sign (#) in the key
+	 *
+	 * Expect parsing data successfully and remove the hash sign in key json
+	 */
+	@Test
+	void testParseDataHasHashSignInTheKey() {
+		webClientCommunicator.setURI("/device-json-hash-sign");
+		webClientCommunicator.setParseContent("true");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+
+		assertEquals(6, stats.size());
+		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("Product name", stats.get("Profile_Name#FullName"));
+		assertEquals("331234", stats.get("Profile_Name#HardwareID"));
+		assertEquals("Brand name", stats.get("Profile_Name#BrandName"));
+		assertEquals("The address", stats.get("AddressName"));
+		assertEquals("Device 03", stats.get("DeviceName"));
+	}
+
+	/**
+	 * Test parse data with set exclude key json has hash sign (#) in the key
+	 *
+	 * Expect parsing data successfully and remove the hash sign in key json and remove 2 key is AddressName and HardwareID
+	 */
+	@Test
+	void testParseDataWithExcludeHasHashSignInTheKey() {
+		webClientCommunicator.setURI("/device-json-hash-sign");
+		webClientCommunicator.setParseContent("true");
+		webClientCommunicator.setExclude("Address#Name,Hardware#ID");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+
+		assertEquals(4, stats.size());
+		assertNull(stats.get("AddressName"));
+		assertNull(stats.get("Profile_Name#HardwareID"));
+		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("Product name", stats.get("Profile_Name#FullName"));
+		assertEquals("Brand name", stats.get("Profile_Name#BrandName"));
+		assertEquals("Device 03", stats.get("DeviceName"));
 	}
 
 	/**
 	 * Test parse data by get the request and response data is empty
 	 *
-	 * Expect status code 200 with content type invalid
+	 * Expect call getMultipleStatistics throw exception because the data body is null
 	 */
 	@Test
 	void testTheResponseDataIsEmpty() {
 		webClientCommunicator.setURI("/device-empty");
 		webClientCommunicator.setParseContent("true");
 
-		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics().get(0), "Error parsing data");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics().get(0), "Error when parsing data, the response is empty");
 	}
 
 	/**
 	 * Test parse data by get the request and response data is array object
 	 *
-	 * Expect status code 200 with content type invalid
+	 * Expect status code 200 and parsing unsupported data with field name Device_information as an array object
 	 */
 	@Test
 	void testParseDataIsArrayObject() {
@@ -629,13 +695,21 @@ class WebClientCommunicatorTest {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 
+		assertEquals(7, stats.size());
+		assertNull(stats.get("Device_information"));
 		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("Product 3", stats.get("Profile_information#ProdFullName"));
+		assertEquals("714.4", stats.get("Profile_information#HardwareID"));
+		assertEquals("3", stats.get("Profile_information#Brand"));
+		assertEquals("3", stats.get("Device"));
+		assertEquals("0, 2", stats.get("information"));
+		assertEquals("the address 02", stats.get("address_name"));
 	}
 
 	/**
 	 * Test parse data by get the request and response data is object multiple level
 	 *
-	 * Expect status code 200 with content type invalid
+	 * Expect status code 200 parsing unsupported data with field name DataName as third level object
 	 */
 	@Test
 	void testParseDataIsObjectMultipleLevel() {
@@ -644,14 +718,22 @@ class WebClientCommunicatorTest {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 
+		assertEquals(7, stats.size());
+		assertNull(stats.get("DataName"));
 		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("Product 3", stats.get("Profile_information#ProdFullName"));
+		assertEquals("714.4", stats.get("Profile_information#HardwareID"));
+		assertEquals("3", stats.get("Profile_information#Brand"));
+		assertEquals("3", stats.get("Device"));
+		assertEquals("0, 2", stats.get("information"));
+		assertEquals("the address 02", stats.get("address_name"));
 
 	}
 
 	/**
-	 * Test parse data by get the request and response data is array object
+	 * Test parse data by get the request and response data as an array
 	 *
-	 * Expect status code 200 with content type invalid
+	 * Expect status code 200 parsing data successfully with text array, number array and boolean array
 	 */
 	@Test
 	void testParseDataXMLIsArray() {
@@ -660,13 +742,17 @@ class WebClientCommunicatorTest {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 
+		assertEquals(4, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("0, 1, 2, 3, 4", stats.get("Number"));
+		assertEquals("text 01, text 02, text 03", stats.get("Text"));
+		assertEquals("true, false, true, false", stats.get("Boolean"));
 	}
 
 	/**
-	 * Test parse data by Xml data from the request
+	 * Test parse data by xml data get from the request
 	 *
-	 * Expect status code 200 with content type is Xml and parse Xml data successfully
+	 * Expect xml data parsing to be successfully and status code 200 and Statistics of size 7
 	 */
 	@Test
 	void testParseDataFromXmlDataSuccessfully() {
@@ -674,35 +760,88 @@ class WebClientCommunicatorTest {
 		webClientCommunicator.setParseContent("true");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
-
-		assertEquals(5, stats.size());
+		assertEquals(7, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("R00000EU", stats.get("Device_information#Article"));
+		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
+		assertEquals("C5010S", stats.get("Information#Model_name"));
+		assertEquals("R9861522EU", stats.get("Information#Article_name"));
+		assertEquals("true", stats.get("Information#Network"));
+		assertEquals("C5010S", stats.get("Model"));
+	}
 
-		for (Map.Entry<String, String> entry : stats.entrySet()) {
-			assertNotNull(entry.getValue());
-		}
+	/**
+	 * Test parse data by xml data get from the request and remove 3 field Network and Article
+	 *
+	 * Expect size to be 5 stats because 3 Article, Network and Model_name fields in exclude were removed. Status code 200 and xml data parsing successfully
+	 */
+	@Test
+	void testParseDataFromXmlDataAndRemoveTwoFieldInData() {
+		webClientCommunicator.setURI("/device-xml");
+		webClientCommunicator.setParseContent("true");
+		webClientCommunicator.setExclude("Network,Model_name,Article");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals(4, stats.size());
+		assertNull(stats.get("Device_information#Model_name"));
+		assertNull(stats.get("Information#Network"));
+		assertNull(stats.get("Device_information#Article"));
+		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
+		assertEquals("R9861522EU", stats.get("Information#Article_name"));
+		assertEquals("C5010S", stats.get("Model"));
 	}
 
 	/**
 	 * Test parsing data by getting request and response data as multiple identical child elements
 	 *
-	 * Expect status code 200 with content type invalid
+	 * Expect status code 200 successfully parsing unsupported data with field name Device_name as array object
 	 */
 	@Test
 	void testParseDataXMLWithMultipleIdenticalChildElements() {
+		webClientCommunicator.setURI("/device-xml-array-object");
+		webClientCommunicator.setParseContent("true");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+
+		assertEquals(7, stats.size());
+		assertNull(stats.get("Device_name"));
+		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("R00000EU", stats.get("Device_information#Article"));
+		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
+		assertEquals("C5010S", stats.get("Information#Model_name"));
+		assertEquals("R9861522EU", stats.get("Information#Article_name"));
+		assertEquals("true", stats.get("Information#Network"));
+		assertEquals("C5010S", stats.get("Model"));
+	}
+
+	/**
+	 * Test parsing data by getting request and response data as multiple identical child elements as an array
+	 *
+	 * Expect status code 200 successfully parsing data with 2 field Device_name and Model_name as an array
+	 */
+	@Test
+	void testParseDataXMLWithMSupportParseMultipleIdenticalChildElements() {
 		webClientCommunicator.setURI("/device-xml-array");
 		webClientCommunicator.setParseContent("true");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 
+		assertEquals(8, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
-
+		assertEquals("100,101,102", stats.get("Information#Model_name"));
+		assertEquals("C5010S,C5010S01,C5010S02", stats.get("Device_name"));
+		assertEquals("R00000EU", stats.get("Device_information#Article"));
+		assertEquals("R9861522EU", stats.get("Information#Article_name"));
+		assertEquals("C5010S", stats.get("Model"));
+		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
+		assertEquals("true", stats.get("Information#Network"));
 	}
 
 	/**
 	 * Test data parsing by getting request and response data with multiple subtag inside tag name
 	 *
-	 * Expect does not support parse data and status code 200 with content type invalid
+	 * Expect status code 200 parsing unsupported data with field name DataName as third level
 	 */
 	@Test
 	void testParseDataXMLWithMultipleSubtagInsideTagName() {
@@ -712,12 +851,21 @@ class WebClientCommunicatorTest {
 		Map<String, String> stats = extendedStatistics.getStatistics();
 
 		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals(7, stats.size());
+		assertNull(stats.get("Device_name"));
+		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("R00000EU", stats.get("Device_information#Article"));
+		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
+		assertEquals("C5010S", stats.get("Information#Model_name"));
+		assertEquals("R9861522EU", stats.get("Information#Article_name"));
+		assertEquals("true", stats.get("Information#Network"));
+		assertEquals("C5010S", stats.get("Model"));
 	}
 
 	/**
 	 * Test content type multiple option and content valid parse content type
 	 *
-	 * Expect parsing data successfully with content type valid
+	 * Expect parsing data successfully
 	 */
 	@Test
 	void testContentTypeMultipleOptionAndContentTypeValid() {
@@ -725,26 +873,49 @@ class WebClientCommunicatorTest {
 		webClientCommunicator.setParseContent("true");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
-
 		assertEquals(6, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("Product 3", stats.get("Profile_information#ProdFullName"));
+		assertEquals("714.4", stats.get("Profile_information#HardwareID"));
+		assertEquals("3", stats.get("Profile_information#Brand"));
+		assertEquals("3", stats.get("Device"));
+		assertEquals("0, 2, 4, 6", stats.get("information"));
+	}
 
-		for (Map.Entry<String, String> entry : stats.entrySet()) {
-			assertNotNull(entry.getValue());
-		}
+	/**
+	 * Test get content type from the request is empty
+	 *
+	 * Expect parsing data successfully
+	 */
+	@Test
+	void testContentTypeIsEmpty() {
+		webClientCommunicator.setURI("/device-no-content");
+		webClientCommunicator.setParseContent("true");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals(6, stats.size());
+		assertEquals("200 OK", stats.get("URI Status"));
+		assertEquals("brand name 3", stats.get("Profile#Brand_name"));
+		assertEquals("device 03", stats.get("Device_name"));
+		assertEquals("Product 3", stats.get("Profile#FullName"));
+		assertEquals("714", stats.get("Profile#Hardware"));
+		assertEquals("the address 02", stats.get("address_name"));
 	}
 
 	/**
 	 * Test content type multiple option and content invalid
 	 *
-	 * Expect parsing data with content type valid
+	 * Expect no parsing the data and  status code 200 OK
 	 */
 	@Test
 	void testContentTypeMultipleOptionAndContentTypeInvalid() {
 		webClientCommunicator.setURI("/device-content-type-invalid");
 		webClientCommunicator.setParseContent("true");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
 
-		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics().get(0), "Error the content type invalid");
+		assertEquals(1, stats.size());
+		assertEquals("200 OK", stats.get("URI Status"));
 	}
 
 	/**
@@ -757,13 +928,25 @@ class WebClientCommunicatorTest {
 		webClientCommunicator.setURI("/device-content-type-invalid");
 		webClientCommunicator.setParseContent("true99999");
 		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics().get(0),
-				"The parseContent has a boolean data type (true or false). Please re-enter parseContent: " + webClientCommunicator.getParseContent());
+				"The parseContent has a boolean data type (true or false). Please update parseContent: " + webClientCommunicator.getParseContent());
+	}
+
+	/**
+	 * Test parseContent empty
+	 *
+	 * Expect getMultipleStatistics throws exception with message enter parse content error
+	 */
+	@Test
+	void testParseContentIsEmptyErrorThrowsException() {
+		webClientCommunicator.setURI("/device-content-type-invalid");
+		webClientCommunicator.setParseContent("");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics().get(0), "The parseContent can't be empty. Please update the parseContent to true or false");
 	}
 
 	/**
 	 * Test enter parseContent is false
 	 *
-	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 200 OK
+	 * Test method for {@link WebClientCommunicator#getMultipleStatistics()} with response status code 200 OK and No parsing data
 	 */
 	@Test
 	void testParseContentIsFalse() {
@@ -771,7 +954,7 @@ class WebClientCommunicatorTest {
 		webClientCommunicator.setParseContent("false");
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
-
+		assertEquals(1, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
 	}
 }

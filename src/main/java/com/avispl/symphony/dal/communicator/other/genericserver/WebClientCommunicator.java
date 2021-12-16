@@ -48,22 +48,26 @@ import com.avispl.symphony.dal.util.StringUtils;
  *
  * @author Duy Nguyen, Ivan
  * @version 1.0.0
- * @since 1.0.1
+ * @since 1.2.0
  */
 public class WebClientCommunicator extends RestCommunicator implements Monitorable {
 
 	/**
 	 * URI string that is used to check accessible.
+	 *@since 1.2.0
 	 */
 	private String URI;
 
 	/**
-	 * TODO: explain @since
+	 * The exclude is configuration properties on the symphony portal
+	 * @since 1.2.0
 	 */
 	private String exclude;
 
 	/**
-	 * TODO: explain @since
+	 * The parseContent is configuration properties on the symphony portal
+	 *
+	 * @since 1.2.0
 	 */
 	private String parseContent;
 
@@ -81,7 +85,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * Retrieves {@code {@link #exclude }}
 	 *
 	 * @return value of {@link #exclude}
-	 * TODO: explain @since
+	 * @since 1.2.0
 	 */
 	public String getExclude() {
 		return exclude;
@@ -91,6 +95,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * Retrieves {@code {@link #parseContent }}
 	 *
 	 * @return value of {@link #parseContent}
+	 * @since 1.2.0
 	 */
 	public String getParseContent() {
 		return parseContent;
@@ -98,8 +103,11 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 
 	/**
 	 * Sets {@code Content}
+	 * If set to “False” the adapter will not parse the content (regardless of the content type)
+	 * If set to “True” the adapter will parse content as indicated in this story.
 	 *
 	 * @param parseContent the {@code java.lang.String} field
+	 * @since 1.2.0
 	 */
 	public void setParseContent(String parseContent) {
 		this.parseContent = parseContent;
@@ -109,6 +117,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * Sets {@code exclude} and set excludes after getExclude from the configuration properties on the symphony portal
 	 *
 	 * @param exclude the {@code java.lang.String} field
+	 * @since 1.2.0
 	 */
 	public void setExclude(String exclude) {
 		this.exclude = exclude;

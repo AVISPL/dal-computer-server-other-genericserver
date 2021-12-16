@@ -9,9 +9,9 @@ import java.util.Map;
 /**
  * Util class to store Http status code and its description
  *
- * @author Ivan
+ * @author Duy Nguyen, Ivan
  * @version 1.0.0
- * @since 1.0.1
+ * @since 1.2.0
  */
 public class HttpStatus {
 	/**

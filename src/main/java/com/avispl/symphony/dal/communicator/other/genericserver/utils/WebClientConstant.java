@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
  * WebClientConstant class provides the constant during the monitoring process
  *
  * @author Ivan
- * @version 1.2.0
+ * @version 1.0.0
  * @since 1.2.0
  */
 public final class WebClientConstant {
