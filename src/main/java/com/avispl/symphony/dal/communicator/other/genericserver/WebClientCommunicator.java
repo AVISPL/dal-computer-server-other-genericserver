@@ -3,18 +3,35 @@
  */
 package com.avispl.symphony.dal.communicator.other.genericserver;
 
+import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.UUID;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.ProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.util.EntityUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
@@ -22,30 +39,85 @@ import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.communicator.other.genericserver.utils.HttpStatus;
+import com.avispl.symphony.dal.communicator.other.genericserver.utils.WebClientConstant;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
- * This class checks accessible to a given URI then return the HTTP status code to Symphony
+ * This class checks accessible to a given URI and support parsing data from JSON or XML content then return the HTTP status code, content type, and monitoring data to Symphony
  *
- * @author Duy Nguyen
- * @since 1.0.0
+ * @author Duy Nguyen, Ivan
+ * @version 1.0.0
+ * @since 1.2.0
  */
 public class WebClientCommunicator extends RestCommunicator implements Monitorable {
 
-	private static final String WHITE_SPACE = " ";
-	private static final String URI_STATUS = "URI Status";
-	private static final String NOT_CONFIGURED = "Not Configured";
-	private static final Pattern HTTP_STATUS_CODE_PATTERN = Pattern.compile("(\\d{3})");
 	/**
 	 * URI string that is used to check accessible.
 	 */
 	private String URI;
-	private String baseRequestUrl;
 
 	/**
-	 * Constructor
+	 * TODO: explain @since
 	 */
-	public WebClientCommunicator() {
+	private String exclude;
+
+	/**
+	 * TODO: explain @since
+	 */
+	private String parseContent;
+
+	private boolean isParseContent;
+	private String baseRequestUrl;
+	private final List<String> excludedList = new ArrayList<>();
+	private final ObjectMapper mapper = new ObjectMapper();
+	private final DocumentBuilder documentBuilder = buildSecureDocumentBuilder();
+
+	// Using the UUID for separate the response to make sure we do not have any conflict
+	private final String statusAndBodySeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
+	private final String bodyAndContentTypeSeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
+
+	/**
+	 * Retrieves {@code {@link #exclude }}
+	 *
+	 * @return value of {@link #exclude}
+	 * TODO: explain @since
+	 */
+	public String getExclude() {
+		return exclude;
+	}
+
+	/**
+	 * Retrieves {@code {@link #parseContent }}
+	 *
+	 * @return value of {@link #parseContent}
+	 */
+	public String getParseContent() {
+		return parseContent;
+	}
+
+	/**
+	 * Sets {@code Content}
+	 *
+	 * @param parseContent the {@code java.lang.String} field
+	 */
+	public void setParseContent(String parseContent) {
+		this.parseContent = parseContent;
+	}
+
+	/**
+	 * Sets {@code exclude} and set excludes after getExclude from the configuration properties on the symphony portal
+	 *
+	 * @param exclude the {@code java.lang.String} field
+	 */
+	public void setExclude(String exclude) {
+		this.exclude = exclude;
+	}
+
+
+	/**
+	 * WebClientCommunicator instantiation
+	 */
+	public WebClientCommunicator() throws ParserConfigurationException {
 		// WebClientCommunicator no-args constructor
 	}
 
@@ -68,13 +140,14 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
-	 * This method is called by Symphony to get the list of statistics to be displayed
 	 * {@inheritDoc}
+	 * <p>
+	 * This method is called by Symphony to get the list of statistics to be displayed
 	 *
 	 * @return List<Statistics> This returns the list of statistics
 	 */
 	@Override
-	public List<Statistics> getMultipleStatistics() throws Exception {
+	public List<Statistics> getMultipleStatistics() {
 		if (logger.isDebugEnabled()) {
 			logger.debug(String.format("Perform doGet() at host %s with port %s", this.host, this.getPort()));
 		}
@@ -84,16 +157,48 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		if (!StringUtils.isNullOrEmpty(this.URI)) {
 			int statusCode;
 			try {
-				statusCode = Integer.parseInt(doGet(this.URI));
+				isParseContent = isSupportParseContent();
+
+				String response = doGet(this.URI); // STATUS <statusAndBodySeparator> BODY <bodyAndContentTypeSeparator> CONTENT-TYPE
+				int startOfBodyIndex = response.indexOf(statusAndBodySeparator);
+				int startOfContentTypeIndex = response.indexOf(bodyAndContentTypeSeparator);
+
+				if (startOfContentTypeIndex < 0) {
+					// no content type (means having no response body as well)
+					statusCode = Integer.parseInt(response);
+				} else {
+					// having content type
+					if (startOfBodyIndex < 0) {
+						// no response body
+						statusCode = Integer.parseInt(response.substring(0, startOfContentTypeIndex));
+					} else {
+						// have response body
+						statusCode = Integer.parseInt(response.substring(0, startOfBodyIndex));
+					}
+				}
 				if (!HttpStatus.containsKey(statusCode)) {
 					throw new ResourceNotReachableException("Response status code not in range");
 				}
+
+				if (isParseContent) {
+					String contentType = response.substring(startOfContentTypeIndex + bodyAndContentTypeSeparator.length());
+					if (isValidContentType(contentType)) {
+						String responseBody = null;
+						if (startOfBodyIndex > 0) {
+							// have response body
+							responseBody = response.substring(startOfBodyIndex + statusAndBodySeparator.length(), startOfContentTypeIndex);
+						}
+						// handle 2xx cases parsing data received from the device
+						if (200 <= statusCode && statusCode < 300) {
+							extractExcludeList(exclude);
+							populateInformationFromData(stats, responseBody);
+						}
+					}
+				}
 			} catch (Exception exc) {
 				String errorMessage = exc.getMessage();
-				if (StringUtils.isNullOrEmpty(errorMessage)) {
-					if (exc.getCause() != null) {
-						errorMessage = exc.getCause().getMessage();
-					}
+				if (StringUtils.isNullOrEmpty(errorMessage) && exc.getCause() != null) {
+					errorMessage = exc.getCause().getMessage();
 				}
 				// handle 3xx cases in case of exception
 				if (exc.getCause() instanceof ProtocolException) {
@@ -106,9 +211,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				}
 			}
 			uriStatusMessage = generateResponseMessage(statusCode);
-			stats.put(URI_STATUS, uriStatusMessage);
+			stats.put(WebClientConstant.URI_STATUS, uriStatusMessage);
 		} else {
-			stats.put(URI_STATUS, NOT_CONFIGURED);
+			stats.put(WebClientConstant.URI_STATUS, WebClientConstant.NOT_CONFIGURED);
 		}
 		extStats.setStatistics(stats);
 		return Collections.singletonList(extStats);
@@ -121,9 +226,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
-	 * WebClientCommunicator doesn't require authentication
-	 *
 	 * {@inheritDoc}
+	 * <p>
+	 * WebClientCommunicator doesn't require authentication
 	 */
 	@Override
 	protected void authenticate() {
@@ -136,15 +241,17 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @return String This returns the message as "<status code> <description>"
 	 */
 	private String generateResponseMessage(int statusCode) {
-		return statusCode + WHITE_SPACE + HttpStatus.getDescription(statusCode);
+		return statusCode + WebClientConstant.SPACE + HttpStatus.getDescription(statusCode);
 	}
 
 	/**
-	 * Return the status code.
-	 *
 	 * {@inheritDoc}
+	 * <p>
+	 * Get data from uri path
 	 *
-	 * @return This returns the status code.
+	 * @param uri the uri is the path get from the configuration properties on the symphony portal
+	 * @return String This returns the status code and dataBody if the response get body not null
+	 * @throws Exception if getting information from the Uri failed
 	 */
 	@Override
 	public String doGet(String uri) throws Exception {
@@ -155,17 +262,47 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			this.logger.debug("Performing a GET operation for " + getUri);
 		}
 
-		HttpGet request = new HttpGet(getUri);
+		StringBuilder stringBuilder = new StringBuilder();
 		HttpResponse response = null;
-
 		try {
-			response = client.execute(request);
+			response = client.execute(new HttpGet(getUri));
+			// status code
+			stringBuilder.append(response.getStatusLine().getStatusCode());
+
+			HttpEntity httpEntity = response.getEntity();
+			if (isParseContent && httpEntity != null) {
+				// response body
+				String dataBody = EntityUtils.toString(httpEntity);
+				if (!StringUtils.isNullOrEmpty(dataBody)) {
+					stringBuilder.append(statusAndBodySeparator);
+					stringBuilder.append(dataBody);
+				}
+
+				// content type
+				stringBuilder.append(bodyAndContentTypeSeparator);
+				stringBuilder.append(getContentType(httpEntity));
+			}
 		} finally {
 			if (response instanceof CloseableHttpResponse) {
 				((CloseableHttpResponse) response).close();
 			}
 		}
-		return String.valueOf(response.getStatusLine().getStatusCode());
+		return stringBuilder.toString();
+	}
+
+	/**
+	 * Extract the content type from httpEntity
+	 *
+	 * @param httpEntity HttpEntity
+	 * @return {@code contentType}
+	 */
+	private String getContentType(HttpEntity httpEntity) {
+		String contentType = WebClientConstant.NO_RESPONSE_CONTENT_TYPE;
+		Header header = httpEntity.getContentType();
+		if (header != null && !StringUtils.isNullOrEmpty(header.getValue())) {
+			contentType = header.getValue();
+		}
+		return contentType;
 	}
 
 	/**
@@ -190,7 +327,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * Returns a URL string with: {@code protocol} + "://" + {@code host} + ":" + {@code port} . Provided {@code baseUri} is not null/empty and isn't preceded
 	 * by a "/" it will append a "/" and {@code baseUri} value to the end of it.
 	 */
-	private void buildBaseUrl() throws Exception {
+	private void buildBaseUrl() {
 		StringBuilder uriBuilder = new StringBuilder();
 		uriBuilder.append(this.getProtocol()).append("://");
 		uriBuilder.append(this.getHost());
@@ -211,7 +348,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @return int This returns the HTTP response status code or -1 if it's out of the valid range
 	 */
 	private int parseTo3XXStatusCode(String errorMessage) {
-		Matcher matcher = HTTP_STATUS_CODE_PATTERN.matcher(errorMessage);
+		Matcher matcher = WebClientConstant.HTTP_STATUS_CODE_PATTERN.matcher(errorMessage);
 		while (matcher.find()) {
 			int statusCode = Integer.parseInt(matcher.group(1));
 			// in range 3xx
@@ -220,5 +357,375 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			}
 		}
 		return -1;
+	}
+
+	/**
+	 * Parse information from data after getting data by the request and contribute the data to {@code stats}
+	 *
+	 * @param stats list statistic of the device
+	 * @param data the data is value after getting data by the request
+	 */
+	private void populateInformationFromData(Map<String, String> stats, String data) {
+		if (StringUtils.isNullOrEmpty(data)) {
+			throw new ResourceNotReachableException("Error when parsing data, the response is empty");
+		}
+		try {
+			JsonNode deviceInformation = mapper.readTree(data);
+			parseInformationByJson(stats, deviceInformation);
+		} catch (Exception e) {
+			try {
+				Document doc = documentBuilder.parse(new InputSource(new StringReader(data)));
+				NodeList childNodes = doc.getChildNodes();
+				if (childNodes.getLength() > 0 && childNodes.item(0).getChildNodes().getLength() > 1) {
+					NodeList listElementsByTagName = childNodes.item(0).getChildNodes();
+					parseInformationByXml(listElementsByTagName, stats);
+				}
+			} catch (Exception exc) {
+				throw new ResourceNotReachableException("Error when parsing data, the response is not an JSON or XML");
+			}
+		}
+	}
+
+	/**
+	 * Constructs a new document builder with security features enabled.
+	 *
+	 * @return a new document builder
+	 * @throws ParserConfigurationException thrown if there is a parser configuration exception
+	 */
+	private DocumentBuilder buildSecureDocumentBuilder() throws ParserConfigurationException {
+		final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		factory.setFeature(WebClientConstant.DISALLOW_DOCTYPE_DECL, true);
+		factory.setFeature(WebClientConstant.EXTERNAL_GENERAL_ENTITIES, false);
+		factory.setFeature(WebClientConstant.EXTERNAL_PARAMETER_ENTITIES, false);
+		factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+		factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+		return factory.newDocumentBuilder();
+	}
+
+	/**
+	 * Parse Json data get from the request
+	 *
+	 * @param stats list statistic of the device
+	 * @param data the data is an object to be parsed
+	 */
+	private void parseInformationByJson(Map<String, String> stats, JsonNode data) {
+		Iterator<Entry<String, JsonNode>> fields = data.fields();
+		while (fields.hasNext()) {
+			Map.Entry<String, JsonNode> field = fields.next();
+			if (!isSupportedJsonFormat(field)) {
+				continue;
+			}
+			String jsonName = field.getKey().replace(WebClientConstant.HASH_SIGN, "");
+			JsonNode firstLevelValue = field.getValue();
+			if (firstLevelValue.isArray()) {
+				// array
+				contributeJsonArrayValue(stats, null, firstLevelValue, jsonName);
+			} else if (firstLevelValue.isObject()) {
+				// object
+				contributeJsonValue(stats, firstLevelValue, jsonName);
+			} else {
+				// other
+				String value = firstLevelValue.isTextual() ? firstLevelValue.textValue() : firstLevelValue.toString();
+				addKeyAndValueIntoStatistics(stats, null, jsonName, value);
+			}
+		}
+	}
+
+	/**
+	 * Check next step parsing data json
+	 *
+	 * @param field the field is Map.Entry<String, JsonNode>
+	 * @return nextStep this return true if correct rules else return false
+	 */
+	private boolean isSupportedJsonFormat(Map.Entry<String, JsonNode> field) {
+		boolean nextStep = true;
+		String jsonName = field.getKey();
+		JsonNode jsonValue = field.getValue();
+		if (StringUtils.isNullOrEmpty(jsonName) || jsonValue.isNull() || excludedList.contains(jsonName.trim().replace(WebClientConstant.HASH_SIGN, ""))) {
+			nextStep = false;
+		}
+		return nextStep;
+	}
+
+	/**
+	 * Parsing value form json Array
+	 *
+	 * @param stats the stats are list statistic of the device
+	 * @param parentName the parentName is the parent name of Object
+	 * @param value value the value is an object to be parsed
+	 * @param key the key is field name in the statistics
+	 */
+	private void contributeJsonArrayValue(Map<String, String> stats, String parentName, JsonNode value, String key) {
+		List<String> listStringData = new ArrayList<>();
+		for (int i = 0; i < value.size(); i++) {
+			JsonNode jsonNodeItem = value.get(i);
+			if (jsonNodeItem.isNull()) {
+				continue;
+			}
+			if (!jsonNodeItem.isObject() && !jsonNodeItem.isArray()) {
+				String jsonValue = jsonNodeItem.isTextual() ? jsonNodeItem.textValue() : jsonNodeItem.toString();
+				if (!StringUtils.isNullOrEmpty(jsonValue)) {
+					listStringData.add(jsonValue);
+				}
+			}
+		}
+		if (!listStringData.isEmpty()) {
+			// remove the character "[" at first and "]" at the end in array list
+			String jsonValue = listStringData.toString().substring(1, listStringData.toString().length() - 1);
+			addKeyAndValueIntoStatistics(stats, parentName, key, jsonValue);
+		}
+	}
+
+	/**
+	 * Parsing data form json object, it's the second level value of the json
+	 * The function only supports parsing data in the form of strings, numbers, text and boolean
+	 *
+	 * @param stats the stats are list statistic of the device
+	 * @param value the value is an object to be parsed
+	 * @param parentName the parentName is the parent name of Object
+	 */
+	private void contributeJsonValue(Map<String, String> stats, JsonNode value, String parentName) {
+		Iterator<Entry<String, JsonNode>> fields = value.fields();
+		while (fields.hasNext()) {
+			Map.Entry<String, JsonNode> field = fields.next();
+			String jsonName = field.getKey();
+			JsonNode secondLevelValue = field.getValue();
+			if (!isSupportedJsonFormat(field)) {
+				continue;
+			}
+			jsonName = jsonName.replace(WebClientConstant.HASH_SIGN, "");
+			if (secondLevelValue.isArray()) {
+				contributeJsonArrayValue(stats, parentName, secondLevelValue, jsonName);
+			} else if (isSupportedJsonFormat(field) && !secondLevelValue.isObject()) {
+				String val = secondLevelValue.isTextual() ? secondLevelValue.textValue() : secondLevelValue.toString();
+				addKeyAndValueIntoStatistics(stats, parentName, jsonName, val);
+			}
+		}
+	}
+
+	/**
+	 * Parse XML data get from the request
+	 *
+	 * @param stats list statistic of the device
+	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
+	 */
+	private void parseInformationByXml(NodeList nodeList, Map<String, String> stats) {
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			Node nodeItem = nodeList.item(i);
+			String tagName = nodeItem.getNodeName();
+			if (!excludedList.contains(tagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
+				// parsing data the first(tag name root) is parseChildElementTag = false
+				if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
+					// handle case has many identical child elements
+					if (nodeItem.getChildNodes().getLength() == 1) {
+						String valueXML = getAndUpdateValueByTagNameXML(stats, "", tagName, nodeItem.getChildNodes().item(0).getNodeValue());
+						addKeyAndValueIntoStatistics(stats, "", tagName, valueXML);
+					}
+					continue;
+				}
+				NodeList nodeListChild = nodeItem.getChildNodes();
+				if (nodeListChild.getLength() > 1) {
+					// parsing data from the second time onwards is parseChildElementTag is true
+					attributeXmlTagValue(nodeListChild, stats, tagName, true);
+				} else {
+					String value = nodeItem.getTextContent();
+					addKeyAndValueIntoStatistics(stats, "", tagName, value);
+				}
+			}
+		}
+	}
+
+	/**
+	 * check next step parsing data xml
+	 *
+	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
+	 * @param nodeItem the nodeItem is child current of nodeList
+	 * @param parseChildElementTag the parseChildElementTag is boolean data if XML has child element is parseChildElementTag is true
+	 * @return nextStep this return true if correct rules else return false
+	 */
+	private boolean isSupportedXMLFormat(NodeList nodeList, Node nodeItem, boolean parseChildElementTag) {
+		boolean nextStep = true;
+		//get all tagName of XML will be not support
+		List<String> listTagNameNoSupportParsingXML = checkTagNameNoSupportParseXML(nodeList, parseChildElementTag);
+		if (listTagNameNoSupportParsingXML.contains(nodeItem.getNodeName())) {
+			nextStep = false;
+		}
+		return nextStep;
+	}
+
+	/**
+	 * Parsing the data by tag name element of the xml data
+	 *
+	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
+	 * @param stats the stats are list statistic of the device
+	 * @param parentName the parentName is tag Name of the parent element
+	 * @param parseChildElementTag the parseChildElementTag is boolean if XML has child element is parseChildElementTag is true
+	 */
+	private void attributeXmlTagValue(NodeList nodeList, Map<String, String> stats, String parentName, boolean parseChildElementTag) {
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			Node nodeItem = nodeList.item(i);
+			String tagName = nodeList.item(i).getNodeName();
+			if (!excludedList.contains(tagName.trim()) && nodeItem.getNodeType() == Node.ELEMENT_NODE) {
+				if (!isSupportedXMLFormat(nodeList, nodeItem, parseChildElementTag)) {
+					String value = nodeItem.getChildNodes().item(0).getNodeValue();
+					if (nodeItem.getChildNodes().getLength() == 1 && !StringUtils.isNullOrEmpty(value)) {
+						String valueXML = getAndUpdateValueByTagNameXML(stats, parentName, tagName, nodeItem.getChildNodes().item(0).getNodeValue());
+						addKeyAndValueIntoStatistics(stats, parentName, tagName, valueXML);
+					}
+					continue;
+				}
+				if (nodeItem.getChildNodes().getLength() == 1) {
+					String xmlValue = getAndUpdateValueByTagNameXML(stats, parentName, tagName, nodeItem.getTextContent());
+					addKeyAndValueIntoStatistics(stats, parentName, tagName, xmlValue);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Add key and value into statistics
+	 * if parentName != empty then data put into statistics: parentName#key : value
+	 * if parentName == empty then data put into statistics: key : value
+	 *
+	 * @param stats the stats are list statistic of the device
+	 * @param parentName the name is parent name of object
+	 * @param key the key is field String first in the map<String,String>
+	 * @param value the value is field String second in the map<String,String>
+	 */
+	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value) {
+		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value)) {
+			if (StringUtils.isNullOrEmpty(parentName)) {
+				stats.put(key, value);
+			} else {
+				stats.put(parentName + WebClientConstant.HASH_SIGN + key, value);
+			}
+		}
+	}
+
+	/**
+	 * Add the value into xmlValue
+	 *
+	 * @param stats the stats are list statistic of the device
+	 * @param parentName the name is parent name of object
+	 * @param key the key is field String first in the map<String,String>
+	 * @param value the value is field String second in the map<String,String>
+	 * @return String the String is value in  map<String,String>
+	 */
+	private String getAndUpdateValueByTagNameXML(Map<String, String> stats, String parentName, String key, String value) {
+		String xmlValue = value;
+		String xmlKey;
+		if (StringUtils.isNullOrEmpty(parentName)) {
+			xmlKey = key.trim();
+		} else {
+			xmlKey = parentName.trim() + WebClientConstant.HASH_SIGN + key.trim();
+		}
+		if (stats.containsKey(xmlKey)) {
+			xmlValue = stats.get(xmlKey) + WebClientConstant.COMMA + value;
+		}
+		return xmlValue;
+	}
+
+	/**
+	 * Check element tag name of XML if correct rules returns list tagName no support parse XML
+	 *
+	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
+	 * @param parseChildElementTag the parseChildElementTag is boolean if XML has child element is parseChildElementTag is true
+	 * @return List<String> the List<String> is list name of tag XML
+	 */
+	private List<String> checkTagNameNoSupportParseXML(NodeList nodeList, boolean parseChildElementTag) {
+		Map<String, Boolean> mapTagName = new HashMap<>();
+		List<String> listTagName = new ArrayList<>();
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			String tagName = nodeList.item(i).getNodeName();
+			boolean tagNameExists = false;
+			if (mapTagName.containsKey(tagName)) {
+				tagNameExists = true;
+			}
+			mapTagName.put(tagName, tagNameExists);
+			//case the XML has element contents not text content
+			if (parseChildElementTag && nodeList.item(i).getChildNodes().getLength() > 1) {
+				listTagName.add(tagName);
+			}
+		}
+		for (Map.Entry<String, Boolean> itemTagName : mapTagName.entrySet()) {
+			//return list name be not supported parse data
+			if (Boolean.TRUE.equals(itemTagName.getValue())) {
+				listTagName.add(itemTagName.getKey());
+			}
+		}
+		return listTagName;
+	}
+
+	/**
+	 * Convert the parseContent string to boolean
+	 *
+	 * @return boolean the boolean is true or false
+	 */
+	private boolean isSupportParseContent() {
+		if (parseContent == null) {
+			// if the parseContent is not configured, do not parse the response
+			return false;
+		}
+		if (parseContent.isEmpty()) {
+			throw new IllegalArgumentException("The parseContent can't be empty. Please update the parseContent to true or false");
+		}
+		String isParseContentData = parseContent.toLowerCase();
+		if (WebClientConstant.TRUE.equals(isParseContentData)) {
+			return true;
+		}
+		if (WebClientConstant.FALSE.equals(isParseContentData)) {
+			return false;
+		}
+		throw new IllegalArgumentException("The parseContent has a boolean data type (true or false). Please update parseContent: " + parseContent);
+	}
+
+	/**
+	 * Check content type is valid
+	 *
+	 * @param contentType the contentType is content-type of response
+	 * @return boolean the return boolean true or false
+	 */
+	private boolean isValidContentType(String contentType) {
+		if (contentType.equals(WebClientConstant.NO_RESPONSE_CONTENT_TYPE)) {
+			// if the content type is not in the response, do not check it
+			return true;
+		}
+		if (contentType.contains(WebClientConstant.COMMA)) {
+			String[] contentTypeList = contentType.split(WebClientConstant.COMMA);
+			for (String contentTypeItem : contentTypeList) {
+				if (!isSupportContentTypeFormat(contentTypeItem.trim())) {
+					return false;
+				}
+			}
+			return true;
+		}
+		return isSupportContentTypeFormat(contentType);
+	}
+
+	/**
+	 * Check the content type is supported
+	 *
+	 * @param contentType the contentType is content-type of response
+	 */
+	private boolean isSupportContentTypeFormat(String contentType) {
+		boolean isSupportContentType = true;
+		if (contentType.contains(WebClientConstant.IMAGE) || contentType.contains(WebClientConstant.VIDEO) || contentType.contains(WebClientConstant.AUDIO)) {
+			isSupportContentType = false;
+		}
+		return isSupportContentType;
+	}
+
+	/**
+	 * Get exclude list from the exclude string
+	 *
+	 * @param exclude the exclude is the keyword list will be removed from the statistics list
+	 */
+	private void extractExcludeList(String exclude) {
+		if (!StringUtils.isNullOrEmpty(exclude)) {
+			String[] excludeListString = exclude.split(WebClientConstant.COMMA);
+			for (String excludeEl : excludeListString) {
+				excludedList.add(excludeEl.trim().replace(WebClientConstant.HASH_SIGN, ""));
+			}
+		}
 	}
 }
