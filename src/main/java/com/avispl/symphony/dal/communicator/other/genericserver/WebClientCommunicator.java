@@ -525,7 +525,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			String firstLevelTagName = nodeItem.getNodeName();
 			NodeList childNodes = nodeItem.getChildNodes();
 
-			if (excludedList.contains(firstLevelTagName.trim())) {
+			if (excludedList.contains(firstLevelTagName.trim()) || nodeItem.getNodeType() != Node.ELEMENT_NODE) {
 				continue;
 			}
 
@@ -611,7 +611,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		for (Node nodeItem : iterable(nodeList)) {
 			String secondLevelTagName = nodeItem.getNodeName();
 
-			if (excludedList.contains(secondLevelTagName.trim())) {
+			if (excludedList.contains(secondLevelTagName.trim()) || nodeItem.getNodeType() != Node.ELEMENT_NODE) {
 				continue;
 			}
 
