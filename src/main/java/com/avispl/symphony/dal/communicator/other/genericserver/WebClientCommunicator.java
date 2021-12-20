@@ -48,7 +48,7 @@ import com.avispl.symphony.dal.util.StringUtils;
  *
  * @author Duy Nguyen, Ivan
  * @version 1.0.0
- * @since 1.0.1
+ * @since 1.2.0
  */
 public class WebClientCommunicator extends RestCommunicator implements Monitorable {
 
@@ -90,6 +90,71 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		// WebClientCommunicator no-args constructor
 	}
 
+	/**
+	 * Retrieves {@code {@link #URI}}
+	 *
+	 * @return value of {@link #URI}
+	 */
+	public String getURI() {
+		return URI;
+	}
+
+	/**
+	 * Retrieves {@code {@link #exclude }}
+	 *
+	 * @return value of {@link #exclude}
+	 * @since 1.2.0
+	 */
+	public String getExclude() {
+		return exclude;
+	}
+
+	/**
+	 * Retrieves {@code {@link #parseContent }}
+	 *
+	 * @return value of {@link #parseContent}
+	 * @since 1.2.0
+	 */
+	public String getParseContent() {
+		return parseContent;
+	}
+
+	/**
+	 * Sets {@code URI}
+	 *
+	 * @param URI the {@code java.lang.String} field
+	 */
+	public void setURI(String URI) {
+		this.URI = URI;
+	}
+
+	/**
+	 * Sets {@code exclude} and set excludes after getExclude from the configuration properties on the symphony portal
+	 *
+	 * @param exclude the {@code java.lang.String} field
+	 * @since 1.2.0
+	 */
+	public void setExclude(String exclude) {
+		this.exclude = exclude;
+	}
+
+	/**
+	 * Sets {@code Content}
+	 * If set to “False” the adapter will not parse the content (regardless of the content type)
+	 * If set to “True” the adapter will parse content as indicated in this story.
+	 *
+	 * @param parseContent the {@code java.lang.String} field
+	 * @since 1.2.0
+	 */
+	public void setParseContent(String parseContent) {
+		this.parseContent = parseContent;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * Adding the logic for build base URL
+	 */
 	@Override
 	protected void internalInit() throws Exception {
 		super.internalInit();
@@ -104,6 +169,52 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	@Override
 	protected void authenticate() {
 		// WebClientCommunicator doesn't require authentication
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * Get data from uri path
+	 *
+	 * @param uri the uri is the path get from the configuration properties on the symphony portal
+	 * @return String This returns the status code and dataBody if the response get body not null
+	 * @throws Exception if getting information from the Uri failed
+	 */
+	@Override
+	public String doGet(String uri) throws Exception {
+		HttpClient client = this.obtainHttpClient(false);
+
+		String getUri = this.buildRequestUrl(uri);
+		if (this.logger.isDebugEnabled()) {
+			this.logger.debug("Performing a GET operation for " + getUri);
+		}
+
+		StringBuilder stringBuilder = new StringBuilder();
+		HttpResponse response = null;
+		try {
+			response = client.execute(new HttpGet(getUri));
+			// status code
+			stringBuilder.append(response.getStatusLine().getStatusCode());
+
+			HttpEntity httpEntity = response.getEntity();
+			if (isParseContent && httpEntity != null) {
+				// response body
+				String dataBody = EntityUtils.toString(httpEntity);
+				if (!StringUtils.isNullOrEmpty(dataBody)) {
+					stringBuilder.append(statusAndBodySeparator);
+					stringBuilder.append(dataBody);
+				}
+
+				// content type
+				stringBuilder.append(bodyAndContentTypeSeparator);
+				stringBuilder.append(getContentType(httpEntity));
+			}
+		} finally {
+			if (response instanceof CloseableHttpResponse) {
+				((CloseableHttpResponse) response).close();
+			}
+		}
+		return stringBuilder.toString();
 	}
 
 	/**
@@ -184,112 +295,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		}
 		extStats.setStatistics(stats);
 		return Collections.singletonList(extStats);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * Get data from uri path
-	 *
-	 * @param uri the uri is the path get from the configuration properties on the symphony portal
-	 * @return String This returns the status code and dataBody if the response get body not null
-	 * @throws Exception if getting information from the Uri failed
-	 */
-	@Override
-	public String doGet(String uri) throws Exception {
-		HttpClient client = this.obtainHttpClient(false);
-
-		String getUri = this.buildRequestUrl(uri);
-		if (this.logger.isTraceEnabled()) {
-			this.logger.debug("Performing a GET operation for " + getUri);
-		}
-
-		StringBuilder stringBuilder = new StringBuilder();
-		HttpResponse response = null;
-		try {
-			response = client.execute(new HttpGet(getUri));
-			// status code
-			stringBuilder.append(response.getStatusLine().getStatusCode());
-
-			HttpEntity httpEntity = response.getEntity();
-			if (isParseContent && httpEntity != null) {
-				// response body
-				String dataBody = EntityUtils.toString(httpEntity);
-				if (!StringUtils.isNullOrEmpty(dataBody)) {
-					stringBuilder.append(statusAndBodySeparator);
-					stringBuilder.append(dataBody);
-				}
-
-				// content type
-				stringBuilder.append(bodyAndContentTypeSeparator);
-				stringBuilder.append(getContentType(httpEntity));
-			}
-		} finally {
-			if (response instanceof CloseableHttpResponse) {
-				((CloseableHttpResponse) response).close();
-			}
-		}
-		return stringBuilder.toString();
-	}
-
-	/**
-	 * Retrieves {@code {@link #exclude }}
-	 *
-	 * @return value of {@link #exclude}
-	 * @since 1.2.0
-	 */
-	public String getExclude() {
-		return exclude;
-	}
-
-	/**
-	 * Retrieves {@code {@link #parseContent }}
-	 *
-	 * @return value of {@link #parseContent}
-	 * @since 1.2.0
-	 */
-	public String getParseContent() {
-		return parseContent;
-	}
-
-	/**
-	 * Sets {@code Content}
-	 * If set to “False” the adapter will not parse the content (regardless of the content type)
-	 * If set to “True” the adapter will parse content as indicated in this story.
-	 *
-	 * @param parseContent the {@code java.lang.String} field
-	 * @since 1.2.0
-	 */
-	public void setParseContent(String parseContent) {
-		this.parseContent = parseContent;
-	}
-
-	/**
-	 * Sets {@code exclude} and set excludes after getExclude from the configuration properties on the symphony portal
-	 *
-	 * @param exclude the {@code java.lang.String} field
-	 * @since 1.2.0
-	 */
-	public void setExclude(String exclude) {
-		this.exclude = exclude;
-	}
-
-	/**
-	 * Retrieves {@code {@link #URI}}
-	 *
-	 * @return value of {@link #URI}
-	 */
-	public String getURI() {
-		return URI;
-	}
-
-	/**
-	 * Sets {@code URI}
-	 *
-	 * @param URI the {@code java.lang.String} field
-	 */
-	public void setURI(String URI) {
-		this.URI = URI;
 	}
 
 	/**
@@ -569,7 +574,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param nodeList the nodeList is an XML list tag that needs to be parsed
 	 * @return Iterable<Node>
 	 */
-	private static Iterable<Node> iterable(final NodeList nodeList) {
+	private Iterable<Node> iterable(final NodeList nodeList) {
 		return () -> new Iterator<Node>() {
 			private int index = 0;
 
