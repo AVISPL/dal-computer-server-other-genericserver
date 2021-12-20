@@ -7,7 +7,7 @@
       },
       "response": {
         "status": 200,
-        "body": "Hello World",
+        "body": null,
         "headers": {
           "Content-Type": "text/plain"
         }
@@ -20,7 +20,7 @@
       },
       "response": {
         "status": 200,
-        "body": "XML File",
+        "body": null,
         "headers": {
           "Content-Type": "text/plain"
         }
@@ -33,7 +33,7 @@
       },
       "response": {
         "status": 200,
-        "body": "JPG File",
+        "body": "null",
         "headers": {
           "Content-Type": "text/plain"
         }
@@ -358,7 +358,7 @@
       },
       "response": {
         "status": 200,
-        "body": "Full Path 200 OK",
+        "body": null,
         "headers": {
           "Content-Type": "text/plain"
         }
@@ -371,7 +371,7 @@
       },
       "response": {
         "status": 200,
-        "body": "200 OK",
+        "body": null,
         "headers": {
           "Content-Type": "text/plain"
         }
@@ -384,7 +384,7 @@
       },
       "response": {
         "status": 200,
-        "body": "200 OK",
+        "body": null,
         "headers": {
           "Content-Type": "text/plain"
         }
@@ -569,6 +569,227 @@
         "body": "103",
         "headers": {
           "Content-Type": "text/plain"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-json"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"address_name\" : \"the address 01\",\"address_name\" : \"the address 02\",\"Profile_information\": {\"Brand\" : \"3\",\"HardwareID\" : \"714.4\",\"ProdFullName\" : \"Product 3\",\"Infor_name\" : [{\"name\" : \"name 001\"},{\"address\" : \"address 001\"}],\"Version\" : {\"SerialNumber\" : \"ACCC8E78B97\",\"HardwareID\" : {\"BuildDate\" : \"Feb 14 2021 12:00\"}}},\"infor\" : [{\"name\" : \"name 01\"},{\"address\" : \"address 01\"}],\"information\" : [0,2,null,\"\"],\"Device\" : \"3\",\"Device_info\" : {\"Device\" : {\"Name\" : \"A001\",\"Network\" : true}}}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-json-empty-key"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\n  \"address_name\": \"the address 02\",\n  \"\": {\n    \"Brand_name\": \"brand name 3\",\n    \"Hardware\": 714,\n    \"\": \"Product 3\"\n  },\n  \"Device_name\": \"device 03\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-json-hash-sign"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\n  \"Address#Name\": \"The address\",\n  \"Profile_Name\": {\n    \"Brand#Name\": \"Brand name\",\n    \"Hardware#ID\": \"331234\",\n    \"Full#Name\": \"Product name\"\n  },\n  \"Device#Name\": \"Device 03\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-no-content"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\n  \"address_name\": \"the address 02\",\n  \"Profile\": {\n    \"Brand_name\": \"brand name 3\",\n    \"Hardware\": 714,\n    \"FullName\": \"Product 3\"\n  },\n  \"Device_name\": \"device 03\"\n}",
+        "headers": {
+          "Content-Type": ""
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-xml"
+      },
+      "response": {
+        "status": 200,
+        "body": "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><root><Model>C5010S</Model><Device_information><Article>R00000EU</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information></root>",
+        "headers": {
+          "Content-Type": "text/xml"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-empty"
+      },
+      "response": {
+        "status": 200,
+        "body": null,
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-array"
+      },
+      "response": {
+        "status": 200,
+        "body": "{ \"Number\":[0,1,2,3,4], \"Text\" : [\"text 01\",\"text 02\",\"text 03\"], \"Boolean\" : [true,false,true,false]}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-object-and-object"
+      },
+      "response": {
+        "status": 200,
+        "body": "{  \"DataName\": {    \"ChildData\": {      \"Profile_information\": {        \"Brand\": \"3\",        \"BuildDate\": \"Feb 14 2021 12:00\",        \"HardwareID\": \"714.4\",        \"ProdFullName\": \"Product 3\",        \"SerialNumber\": \"ACCC8E78B97\",        \"Version\": \"8.20.1\"      }    }  },  \"address_name\": \"the address 02\",  \"Profile_information\": {    \"Brand\": \"3\",    \"HardwareID\": \"714.4\",    \"ProdFullName\": \"Product 3\"  },  \"information\": [    0,    2,    null,    \"\"  ],  \"Device\": \"3\"}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-xml-array-object"
+      },
+      "response": {
+        "status": 200,
+        "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root name=\"device-3\"><Device_name><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Product_name>CX-50</Product_name><Serial_number>186355376</Serial_number></Device_name><Device_name><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Product_name>CX-50</Product_name><Serial_number>186355376</Serial_number></Device_name><Model>C5010S</Model><Device_information><Article>R00000EU</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information></root>",
+        "headers": {
+          "Content-Type": "text/xml"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-xml-array"
+      },
+      "response": {
+        "status": 200,
+        "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root name=\"device-3\"><Device_name>C5010S</Device_name><Device_name>C5010S01</Device_name><Device_name>C5010S02</Device_name><Model>C5010S</Model><Device_information><Article>R00000EU</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>100</Model_name><Model_name>101</Model_name><Model_name>102</Model_name><Network>true</Network></Information></root>",
+        "headers": {
+          "Content-Type": "text/xml"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-tag-children"
+      },
+      "response": {
+        "status": 200,
+        "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root name=\"device-3\"><Model>C5010S</Model><Device_information><Article>R00000EU</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information><Device_Name><Device_information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Product_name>CX-50</Product_name><Serial_number>186355376</Serial_number></Device_information></Device_Name></root>",
+        "headers": {
+          "Content-Type": "text/xml"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-array-object"
+      },
+      "response": {
+        "status": 200,
+        "body": "{  \"Device_information\": [    {      \"Article_name\": \"R9861522EU\",      \"Model_name\": \"C5010S\",      \"Product_name\": \"CX-50\",      \"Serial_number\": \"186355376\"    },    {      \"Article_name\": \"R90000EU\",      \"Model_name\": \"C9000S\",      \"Product_name\": \"CX-9000\",      \"Serial_number\": \"9000000\"    }  ],  \"address_name\": \"the address 02\",  \"Profile_information\": {    \"Brand\": \"3\",    \"HardwareID\": \"714.4\",    \"ProdFullName\": \"Product 3\"  },  \"information\": [    0,    2,    null,    \"\"  ],  \"Device\": \"3\"}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-test"
+      },
+      "response": {
+        "status": 200,
+        "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><Device><Device_information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Product_name>CX-50</Product_name><Serial_number><Serial>186355376</Serial></Serial_number></Device_information></Device></root>",
+        "headers": {
+          "Content-Type": "text/xml"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-error-json-format"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"Profile_information\":{\"Brand\" : 3,\"HardwareID\" :\"714.4\",\"ProdFullName\" :\"Product 3\"}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-content-type-multiple-option"
+      },
+      "response": {
+        "status": 200,
+        "body": "{  \"Profile_information\": {    \"Brand\": \"3\",    \"HardwareID\": \"714.4\",    \"ProdFullName\": \"Product 3\"  },  \"information\": [    0,    2,    4,    6  ],  \"Device\": \"3\"}",
+        "headers": {
+          "Content-Type": "application/json, text/plain, text/xml"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-content-type-invalid"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"Profile_information\": {\"Brand\" : \"3\",\"HardwareID\" : \"714.4\",\"ProdFullName\" : \"Product 3\",\"Infor_name\" : [{\"name\" : \"name 001\"},{\"address\" : \"address 001\"}],\"Version\" : {\"SerialNumber\" : \"ACCC8E78B97\",\"HardwareID\" : {\"BuildDate\" : \"Feb 14 2021 12:00\"}}},\"infor\" : [{\"name\" : \"name 01\"},{\"address\" : \"address 01\"}],\"information\" : [0,2,null,\"\"],\"Device\" : \"3\",\"Device_info\" : {\"Device\" : {\"Name\" : \"A001\",\"Network\" : true}}}",
+        "headers": {
+          "Content-Type": "image/jpeg"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-parse-content-false"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"Profile_information\": {\"Brand\" : \"3\",\"HardwareID\" : \"714.4\",\"ProdFullName\" : \"Product 3\",\"Infor_name\" : [{\"name\" : \"name 001\"},{\"address\" : \"address 001\"}],\"Version\" : {\"SerialNumber\" : \"ACCC8E78B97\",\"HardwareID\" : {\"BuildDate\" : \"Feb 14 2021 12:00\"}}},\"infor\" : [{\"name\" : \"name 01\"},{\"address\" : \"address 01\"}],\"information\" : [0,2,null,\"\"],\"Device\" : \"3\",\"Device_info\" : {\"Device\" : {\"Name\" : \"A001\",\"Network\" : true}}}",
+        "headers": {
+          "Content-Type": "application/json"
         }
       }
     }

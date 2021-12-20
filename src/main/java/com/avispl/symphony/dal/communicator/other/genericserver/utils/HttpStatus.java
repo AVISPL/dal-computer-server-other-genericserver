@@ -8,6 +8,10 @@ import java.util.Map;
 
 /**
  * Util class to store Http status code and its description
+ *
+ * @author Duy Nguyen, Ivan
+ * @version 1.0.0
+ * @since 1.2.0
  */
 public class HttpStatus {
 	/**
