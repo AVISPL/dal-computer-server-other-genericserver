@@ -14,7 +14,7 @@ jobs:
       - name: Build and test with Maven
         run: mvn clean install
       - id: getfilename
-        run: echo "::set-output name=file::$(ls target/symphony-dal-communicator-other-genericserver-[0-9].[0-9].[0-9]-SNAPSHOT.jar)"
+        run: echo "::set-output name=file::$(ls target/symphony-dal-communicator-other-genericserver-[0-9].[0-9].[0-9].jar)"
       - uses: actions/upload-artifact@v1
         with:
           name: WebServerV2
