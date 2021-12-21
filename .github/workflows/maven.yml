@@ -46,7 +46,7 @@ jobs:
       - name: PMD check
         run: mvn pmd:check
       - id: getfilename
-        run: echo "::set-output name=file::$(ls target/symphony-dal-communicator-other-genericserver-${{ needs.versiongenerate.outputs.version }}.jar)"
+        run: echo "::set-output name=file::$(ls target/symphony-dal-communicator-other-genericserver-${{ needs.versiongenerate.outputs.version }}-SNAPSHOT.jar)"
       - uses: actions/upload-artifact@v1
         with:
           name: WebServerV2
