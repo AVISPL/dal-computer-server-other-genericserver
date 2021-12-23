@@ -84,9 +84,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private final String statusAndBodySeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 	private final String bodyAndContentTypeSeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 
-	// init is len of "Status"
-	int maxLengthForTheKey = 5;
-
 	/**
 	 * WebClientCommunicator instantiation
 	 */
@@ -274,7 +271,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 						if (200 <= statusCode && statusCode < 300) {
 							extractExcludeList(exclude);
 							populateInformationFromData(stats, responseBody);
-							updateValueByKeyInStatistics(stats);
 						}
 					}
 				}
@@ -659,10 +655,8 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				throw new IllegalArgumentException("Error when parsing data,the JSON key is duplicate: " + key);
 			}
 			if (StringUtils.isNullOrEmpty(parentName)) {
-				maxLengthForTheKey = checkLengthOfKeyJsonOrXML(key);
 				stats.put(key, value);
 			} else {
-				maxLengthForTheKey = checkLengthOfKeyJsonOrXML(key);
 				stats.put(parentName + WebClientConstant.HASH_SIGN + key, value);
 			}
 		}
@@ -787,40 +781,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			String[] excludeListString = exclude.split(WebClientConstant.COMMA);
 			for (String excludeEl : excludeListString) {
 				excludedList.add(excludeEl.trim().replace(WebClientConstant.HASH_SIGN, ""));
-			}
-		}
-	}
-
-	/**
-	 * Check len of key json or xml
-	 *
-	 * @param key the key is key of json or xml
-	 * @return the return maximum len of key
-	 */
-	private int checkLengthOfKeyJsonOrXML(String key) {
-		int maxLength = maxLengthForTheKey;
-		if (!StringUtils.isNullOrEmpty(key)) {
-			key = key.trim();
-			if (key.length() > maxLength && key.length() <= 60) {
-				maxLength = key.length();
-			}
-		}
-		return maxLength;
-	}
-
-	/**
-	 * Update value of key in the statistics
-	 *
-	 * @param stats the stats are list statistics of the device
-	 */
-	private void updateValueByKeyInStatistics(Map<String, String> stats) {
-		for (String key : stats.keySet()) {
-			String value = stats.get(key);
-			int lenValue = value.length();
-			//Length maximums of key and value is 60 character
-			if (lenValue + maxLengthForTheKey > 60) {
-				String newValue = value.substring(0, 60 - maxLengthForTheKey);
-				stats.replace(key, value, newValue);
 			}
 		}
 	}

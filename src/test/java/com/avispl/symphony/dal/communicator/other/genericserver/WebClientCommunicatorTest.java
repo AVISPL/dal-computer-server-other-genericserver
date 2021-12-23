@@ -971,10 +971,8 @@ class WebClientCommunicatorTest {
 		Map<String, String> stats = extendedStatistics.getStatistics();
 		assertEquals(7, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
-		//real value is R00000EU000000000000000000000000000000000000000000011111111111111111111111111111
-		assertEquals("R00000EU0000000000000000000000000000000000000000", stats.get("Device_information#Article"));
-		//real value is C5010S00000000000000000000000000000000000001111111111111111111111
-		assertEquals("C5010S000000000000000000000000000000000000011111", stats.get("Model"));
+		assertEquals("R00000EU", stats.get("Device_information#Article"));
+		assertEquals("C5010S", stats.get("Model"));
 		assertEquals("C5010S", stats.get("Information#Model_name"));
 		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
 		assertEquals("R9861522EU", stats.get("Information#Article_name"));

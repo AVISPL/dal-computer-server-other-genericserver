@@ -644,7 +644,7 @@
       },
       "response": {
         "status": 200,
-        "body": "<root><Model>C5010S00000000000000000000000000000000000001111111111111111111111</Model><Device_information><Article>R00000EU000000000000000000000000000000000000000000011111111111111111111111111111</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information></root>",
+        "body": "<root><Model>C5010S</Model><Device_information><Article>R00000EU</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information></root>",
         "headers": {
           "Content-Type": "text/xml"
         }
