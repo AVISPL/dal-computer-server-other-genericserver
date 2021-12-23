@@ -29,6 +29,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -82,6 +83,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	// Using the UUID for separate the response to make sure we do not have any conflict
 	private final String statusAndBodySeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 	private final String bodyAndContentTypeSeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
+
+	// init is len of "Status"
+	int maxLengthForTheKey = 5;
 
 	/**
 	 * WebClientCommunicator instantiation
@@ -270,6 +274,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 						if (200 <= statusCode && statusCode < 300) {
 							extractExcludeList(exclude);
 							populateInformationFromData(stats, responseBody);
+							updateValueByKeyInStatics(stats);
 						}
 					}
 				}
@@ -386,7 +391,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			throw new ResourceNotReachableException("Error when parsing data, the response is empty");
 		}
 		try {
-			JsonNode deviceInformation = mapper.readTree(data);
+			JsonNode deviceInformation = mapper.readTree(new JSONObject(data).toString());
 			parseInformationByJson(stats, deviceInformation);
 		} catch (Exception e) {
 			try {
@@ -443,7 +448,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			} else {
 				// other
 				String value = firstLevelValue.isTextual() ? firstLevelValue.textValue() : firstLevelValue.toString();
-				addKeyAndValueIntoStatistics(stats, null, jsonName, value);
+				addKeyAndValueIntoStatistics(stats, null, jsonName, value, true);
 			}
 		}
 	}
@@ -489,7 +494,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		if (!listStringData.isEmpty()) {
 			// remove the character "[" at first and "]" at the end in array list
 			String jsonValue = listStringData.toString().substring(1, listStringData.toString().length() - 1);
-			addKeyAndValueIntoStatistics(stats, parentName, key, jsonValue);
+			addKeyAndValueIntoStatistics(stats, parentName, key, jsonValue, true);
 		}
 	}
 
@@ -515,7 +520,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				contributeJsonArrayValue(stats, parentName, secondLevelValue, secondLevelKey);
 			} else if (isSupportedJsonFormat(field) && !secondLevelValue.isObject()) {
 				String val = secondLevelValue.isTextual() ? secondLevelValue.textValue() : secondLevelValue.toString();
-				addKeyAndValueIntoStatistics(stats, parentName, secondLevelKey, val);
+				addKeyAndValueIntoStatistics(stats, parentName, secondLevelKey, val, true);
 			}
 		}
 	}
@@ -538,7 +543,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
 				if (!hasChildElements(nodeItem)) {
 					String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, childNodes.item(0).getNodeValue());
-					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML);
+					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML, false);
 				}
 				continue;
 			}
@@ -547,7 +552,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				handleSecondLevelXML(childNodes, stats, firstLevelTagName);
 			} else {
 				String value = nodeItem.getTextContent();
-				addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value);
+				addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value, false);
 			}
 		}
 	}
@@ -625,13 +630,13 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				String value = nodeItem.getChildNodes().item(0).getNodeValue();
 				if (nodeItem.getChildNodes().getLength() == 1 && !StringUtils.isNullOrEmpty(value)) {
 					String valueXML = getAndUpdateValueByTagNameXML(stats, parentName, secondLevelTagName, nodeItem.getChildNodes().item(0).getNodeValue());
-					addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, valueXML);
+					addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, valueXML, false);
 				}
 				continue;
 			}
 			if (nodeItem.getChildNodes().getLength() == 1) {
 				String xmlValue = getAndUpdateValueByTagNameXML(stats, parentName, secondLevelTagName, nodeItem.getTextContent());
-				addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, xmlValue);
+				addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, xmlValue, false);
 			}
 
 		}
@@ -646,12 +651,18 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param parentName the name is parent name of object
 	 * @param key the key is field String first in the map<String,String>
 	 * @param value the value is field String second in the map<String,String>
+	 * @param jsonContent the jsonContent is boolean type if the jsonContent is true then parsing JSON content else jsonContent is false the parsing XML content
 	 */
-	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value) {
+	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value, boolean jsonContent) {
 		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value)) {
+			if ((stats.containsKey(key) || stats.containsKey(parentName + WebClientConstant.HASH_SIGN + key)) && jsonContent) {
+				throw new IllegalArgumentException("Error when parsing data,the JSON key is duplicate: " + key);
+			}
 			if (StringUtils.isNullOrEmpty(parentName)) {
+				maxLengthForTheKey = checkLengthOfKeyJsonOrXML(key);
 				stats.put(key, value);
 			} else {
+				maxLengthForTheKey = checkLengthOfKeyJsonOrXML(key);
 				stats.put(parentName + WebClientConstant.HASH_SIGN + key, value);
 			}
 		}
@@ -675,7 +686,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			xmlKey = parentName.trim() + WebClientConstant.HASH_SIGN + key.trim();
 		}
 		if (stats.containsKey(xmlKey)) {
-			xmlValue = stats.get(xmlKey) + WebClientConstant.COMMA + value;
+			xmlValue = stats.get(xmlKey) + WebClientConstant.COMMA + WebClientConstant.SPACE + value;
 		}
 		return xmlValue;
 	}
@@ -776,6 +787,40 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			String[] excludeListString = exclude.split(WebClientConstant.COMMA);
 			for (String excludeEl : excludeListString) {
 				excludedList.add(excludeEl.trim().replace(WebClientConstant.HASH_SIGN, ""));
+			}
+		}
+	}
+
+	/**
+	 * Check len of key json or xml
+	 *
+	 * @param key the key is key of json or xml
+	 * @return the return maximum len of key
+	 */
+	private int checkLengthOfKeyJsonOrXML(String key) {
+		int maxLength = maxLengthForTheKey;
+		if (!StringUtils.isNullOrEmpty(key)) {
+			key = key.trim();
+			if (key.length() > maxLength && key.length() <= 60) {
+				maxLength = key.length();
+			}
+		}
+		return maxLength;
+	}
+
+	/**
+	 * Update value of key in the statistics
+	 *
+	 * @param stats the stats are list statistic of the device
+	 */
+	private void updateValueByKeyInStatics(Map<String, String> stats) {
+		for (String key : stats.keySet()) {
+			String value = stats.get(key);
+			int lenValue = value.length();
+			//Length maximums of key and value is 60 character
+			if (lenValue + maxLengthForTheKey > 60) {
+				String newValue = value.substring(0, 60 - maxLengthForTheKey);
+				stats.replace(key, value, newValue);
 			}
 		}
 	}

@@ -829,8 +829,8 @@ class WebClientCommunicatorTest {
 
 		assertEquals(8, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
-		assertEquals("100,101,102", stats.get("Information#Model_name"));
-		assertEquals("C5010S,C5010S01,C5010S02", stats.get("Device_name"));
+		assertEquals("100, 101, 102", stats.get("Information#Model_name"));
+		assertEquals("C5010S, C5010S01, C5010S02", stats.get("Device_name"));
 		assertEquals("R00000EU", stats.get("Device_information#Article"));
 		assertEquals("R9861522EU", stats.get("Information#Article_name"));
 		assertEquals("C5010S", stats.get("Model"));
@@ -956,5 +956,29 @@ class WebClientCommunicatorTest {
 		Map<String, String> stats = extendedStatistics.getStatistics();
 		assertEquals(1, stats.size());
 		assertEquals("200 OK", stats.get("URI Status"));
+	}
+
+	/**
+	 * Test the value more than 60 character
+	 *
+	 * Expect to truncate the value not more than 60 character
+	 */
+	@Test
+	void testTheValueMoreThan60Character() {
+		webClientCommunicator.setURI("/device-xml-more-60-character");
+		webClientCommunicator.setParseContent("true");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) webClientCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		assertEquals(7, stats.size());
+		assertEquals("200 OK", stats.get("URI Status"));
+		//real value is R00000EU000000000000000000000000000000000000000000011111111111111111111111111111
+		assertEquals("R00000EU0000000000000000000000000000000000000000", stats.get("Device_information#Article"));
+		//real value is C5010S00000000000000000000000000000000000001111111111111111111111
+		assertEquals("C5010S000000000000000000000000000000000000011111", stats.get("Model"));
+		assertEquals("C5010S", stats.get("Information#Model_name"));
+		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
+		assertEquals("R9861522EU", stats.get("Information#Article_name"));
+		assertEquals("true", stats.get("Information#Network"));
+
 	}
 }

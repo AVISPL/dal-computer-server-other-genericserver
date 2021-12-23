@@ -579,7 +579,7 @@
       },
       "response": {
         "status": 200,
-        "body": "{\"address_name\" : \"the address 01\",\"address_name\" : \"the address 02\",\"Profile_information\": {\"Brand\" : \"3\",\"HardwareID\" : \"714.4\",\"ProdFullName\" : \"Product 3\",\"Infor_name\" : [{\"name\" : \"name 001\"},{\"address\" : \"address 001\"}],\"Version\" : {\"SerialNumber\" : \"ACCC8E78B97\",\"HardwareID\" : {\"BuildDate\" : \"Feb 14 2021 12:00\"}}},\"infor\" : [{\"name\" : \"name 01\"},{\"address\" : \"address 01\"}],\"information\" : [0,2,null,\"\"],\"Device\" : \"3\",\"Device_info\" : {\"Device\" : {\"Name\" : \"A001\",\"Network\" : true}}}",
+        "body": "{\"address_name\" : \"the address 02\",\"Profile_information\": {\"Brand\" : \"3\",\"HardwareID\" : \"714.4\",\"ProdFullName\" : \"Product 3\",\"Infor_name\" : [{\"name\" : \"name 001\"},{\"address\" : \"address 001\"}],\"Version\" : {\"SerialNumber\" : \"ACCC8E78B97\",\"HardwareID\" : {\"BuildDate\" : \"Feb 14 2021 12:00\"}}},\"infor\" : [{\"name\" : \"name 01\"},{\"address\" : \"address 01\"}],\"information\" : [0,2,null,\"\"],\"Device\" : \"3\",\"Device_info\" : {\"Device\" : {\"Name\" : \"A001\",\"Network\" : true}}}",
         "headers": {
           "Content-Type": "application/json"
         }
@@ -631,7 +631,20 @@
       },
       "response": {
         "status": 200,
-        "body": "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><root><Model>C5010S</Model><Device_information><Article>R00000EU</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information></root>",
+        "body": "<root><Model>C5010S</Model><Device_information><Article>R00000EU</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information></root>",
+        "headers": {
+          "Content-Type": "text/xml"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/device-xml-more-60-character"
+      },
+      "response": {
+        "status": 200,
+        "body": "<root><Model>C5010S00000000000000000000000000000000000001111111111111111111111</Model><Device_information><Article>R00000EU000000000000000000000000000000000000000000011111111111111111111111111111</Article><Article_name>R9861522EU</Article_name></Device_information><Information><Article_name>R9861522EU</Article_name><Model_name>C5010S</Model_name><Network>true</Network></Information></root>",
         "headers": {
           "Content-Type": "text/xml"
         }
