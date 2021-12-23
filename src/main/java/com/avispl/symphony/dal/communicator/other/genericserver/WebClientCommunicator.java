@@ -15,6 +15,7 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.regex.Matcher;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.xml.XMLConstants;
@@ -29,7 +30,6 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
-import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -77,7 +77,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private boolean isParseContent;
 
 	private String baseRequestUrl;
-	private final ObjectMapper mapper = new ObjectMapper();
+	private final ObjectMapper mapper = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
 	private final DocumentBuilder documentBuilder = buildSecureDocumentBuilder();
 
 	// Using the UUID for separate the response to make sure we do not have any conflict
@@ -274,7 +274,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 						if (200 <= statusCode && statusCode < 300) {
 							extractExcludeList(exclude);
 							populateInformationFromData(stats, responseBody);
-							updateValueByKeyInStatics(stats);
+							updateValueByKeyInStatistics(stats);
 						}
 					}
 				}
@@ -391,7 +391,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			throw new ResourceNotReachableException("Error when parsing data, the response is empty");
 		}
 		try {
-			JsonNode deviceInformation = mapper.readTree(new JSONObject(data).toString());
+			JsonNode deviceInformation = mapper.readTree(data);
 			parseInformationByJson(stats, deviceInformation);
 		} catch (Exception e) {
 			try {
@@ -811,9 +811,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	/**
 	 * Update value of key in the statistics
 	 *
-	 * @param stats the stats are list statistic of the device
+	 * @param stats the stats are list statistics of the device
 	 */
-	private void updateValueByKeyInStatics(Map<String, String> stats) {
+	private void updateValueByKeyInStatistics(Map<String, String> stats) {
 		for (String key : stats.keySet()) {
 			String value = stats.get(key);
 			int lenValue = value.length();
