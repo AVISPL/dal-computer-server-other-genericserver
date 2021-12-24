@@ -15,6 +15,7 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.regex.Matcher;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.xml.XMLConstants;
@@ -76,7 +77,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private boolean isParseContent;
 
 	private String baseRequestUrl;
-	private final ObjectMapper mapper = new ObjectMapper();
+	private final ObjectMapper mapper = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
 	private final DocumentBuilder documentBuilder = buildSecureDocumentBuilder();
 
 	// Using the UUID for separate the response to make sure we do not have any conflict
@@ -443,7 +444,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			} else {
 				// other
 				String value = firstLevelValue.isTextual() ? firstLevelValue.textValue() : firstLevelValue.toString();
-				addKeyAndValueIntoStatistics(stats, null, jsonName, value);
+				addKeyAndValueIntoStatistics(stats, null, jsonName, value, true);
 			}
 		}
 	}
@@ -489,7 +490,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		if (!listStringData.isEmpty()) {
 			// remove the character "[" at first and "]" at the end in array list
 			String jsonValue = listStringData.toString().substring(1, listStringData.toString().length() - 1);
-			addKeyAndValueIntoStatistics(stats, parentName, key, jsonValue);
+			addKeyAndValueIntoStatistics(stats, parentName, key, jsonValue, true);
 		}
 	}
 
@@ -515,7 +516,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				contributeJsonArrayValue(stats, parentName, secondLevelValue, secondLevelKey);
 			} else if (isSupportedJsonFormat(field) && !secondLevelValue.isObject()) {
 				String val = secondLevelValue.isTextual() ? secondLevelValue.textValue() : secondLevelValue.toString();
-				addKeyAndValueIntoStatistics(stats, parentName, secondLevelKey, val);
+				addKeyAndValueIntoStatistics(stats, parentName, secondLevelKey, val, true);
 			}
 		}
 	}
@@ -538,7 +539,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			if (!isSupportedXMLFormat(nodeList, nodeItem, false)) {
 				if (!hasChildElements(nodeItem)) {
 					String valueXML = getAndUpdateValueByTagNameXML(stats, "", firstLevelTagName, childNodes.item(0).getNodeValue());
-					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML);
+					addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, valueXML, false);
 				}
 				continue;
 			}
@@ -547,7 +548,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				handleSecondLevelXML(childNodes, stats, firstLevelTagName);
 			} else {
 				String value = nodeItem.getTextContent();
-				addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value);
+				addKeyAndValueIntoStatistics(stats, "", firstLevelTagName, value, false);
 			}
 		}
 	}
@@ -625,13 +626,13 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				String value = nodeItem.getChildNodes().item(0).getNodeValue();
 				if (nodeItem.getChildNodes().getLength() == 1 && !StringUtils.isNullOrEmpty(value)) {
 					String valueXML = getAndUpdateValueByTagNameXML(stats, parentName, secondLevelTagName, nodeItem.getChildNodes().item(0).getNodeValue());
-					addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, valueXML);
+					addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, valueXML, false);
 				}
 				continue;
 			}
 			if (nodeItem.getChildNodes().getLength() == 1) {
 				String xmlValue = getAndUpdateValueByTagNameXML(stats, parentName, secondLevelTagName, nodeItem.getTextContent());
-				addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, xmlValue);
+				addKeyAndValueIntoStatistics(stats, parentName, secondLevelTagName, xmlValue, false);
 			}
 
 		}
@@ -646,9 +647,13 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @param parentName the name is parent name of object
 	 * @param key the key is field String first in the map<String,String>
 	 * @param value the value is field String second in the map<String,String>
+	 * @param jsonContent the jsonContent is boolean type if the jsonContent is true then parsing JSON content else jsonContent is false the parsing XML content
 	 */
-	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value) {
+	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value, boolean jsonContent) {
 		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value)) {
+			if ((stats.containsKey(key) || stats.containsKey(parentName + WebClientConstant.HASH_SIGN + key)) && jsonContent) {
+				throw new IllegalArgumentException("Error when parsing data,the JSON key is duplicate: " + key);
+			}
 			if (StringUtils.isNullOrEmpty(parentName)) {
 				stats.put(key, value);
 			} else {
@@ -675,7 +680,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			xmlKey = parentName.trim() + WebClientConstant.HASH_SIGN + key.trim();
 		}
 		if (stats.containsKey(xmlKey)) {
-			xmlValue = stats.get(xmlKey) + WebClientConstant.COMMA + value;
+			xmlValue = stats.get(xmlKey) + WebClientConstant.COMMA + WebClientConstant.SPACE + value;
 		}
 		return xmlValue;
 	}
