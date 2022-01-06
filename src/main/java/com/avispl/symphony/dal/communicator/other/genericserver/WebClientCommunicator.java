@@ -389,7 +389,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		try {
 			JsonNode deviceInformation = mapper.readTree(data);
 			parseInformationByJson(stats, deviceInformation);
-		} catch (Exception e) {
+		} catch (ResourceNotReachableException e) {
+			throw new ResourceNotReachableException(e.getMessage());
+		} catch (Exception ex) {
 			try {
 				data = data.replaceAll(WebClientConstant.LINE_SEPARATOR, "");
 				Document doc = documentBuilder.parse(new InputSource(new StringReader(data)));
@@ -651,8 +653,10 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 */
 	private void addKeyAndValueIntoStatistics(Map<String, String> stats, String parentName, String key, String value, boolean jsonContent) {
 		if (!StringUtils.isNullOrEmpty(key) && !StringUtils.isNullOrEmpty(value)) {
-			if ((stats.containsKey(key) || stats.containsKey(parentName + WebClientConstant.HASH_SIGN + key)) && jsonContent) {
-				throw new IllegalArgumentException("Error when parsing data,the JSON key is duplicate: " + key);
+			//check for duplicate key JSON at level one and two
+			if (jsonContent && ((StringUtils.isNullOrEmpty(parentName) && stats.containsKey(key)) || (!StringUtils.isNullOrEmpty(parentName) && stats.containsKey(
+					parentName + WebClientConstant.HASH_SIGN + key)))) {
+				throw new ResourceNotReachableException("Error when parsing data,the JSON key is duplicate: " + key);
 			}
 			if (StringUtils.isNullOrEmpty(parentName)) {
 				stats.put(key, value);

@@ -977,6 +977,29 @@ class WebClientCommunicatorTest {
 		assertEquals("R9861522EU", stats.get("Device_information#Article_name"));
 		assertEquals("R9861522EU", stats.get("Information#Article_name"));
 		assertEquals("true", stats.get("Information#Network"));
+	}
 
+	/**
+	 * Test duplicate key json level one
+	 *
+	 * Expect throw exception with message key is duplicate
+	 */
+	@Test
+	void testDuplicateKeyJsonLevelOne() {
+		webClientCommunicator.setURI("/device-json-duplicate");
+		webClientCommunicator.setParseContent("true");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Error when parsing data,the JSON key is duplicate");
+	}
+
+	/**
+	 * Test duplicate key json level two
+	 *
+	 * Expect throw exception with message key is duplicate
+	 */
+	@Test
+	void testDuplicateKeyJsonLevelTwo() {
+		webClientCommunicator.setURI("/device-json-duplicate-level-two");
+		webClientCommunicator.setParseContent("true");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Error when parsing data,the JSON key is duplicate");
 	}
 }
