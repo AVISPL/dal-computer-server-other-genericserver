@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.communicator.HttpCommunicator;
+import com.avispl.symphony.dal.communicator.other.genericserver.utils.WebClientConstant;
 
 /**
  * Unit test for {@link WebClientCommunicator}.
@@ -982,24 +983,24 @@ class WebClientCommunicatorTest {
 	/**
 	 * Test duplicate key json level one
 	 *
-	 * Expect throw exception with message key is duplicate
+	 * Expect throw exception with message the key is duplicated
 	 */
 	@Test
 	void testDuplicateKeyJsonLevelOne() {
 		webClientCommunicator.setURI("/device-json-duplicate");
 		webClientCommunicator.setParseContent("true");
-		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Error when parsing data,the JSON key is duplicate");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), WebClientConstant.DUPLICATE_ERR);
 	}
 
 	/**
 	 * Test duplicate key json level two
 	 *
-	 * Expect throw exception with message key is duplicate
+	 * Expect throw exception with message the key is duplicated
 	 */
 	@Test
 	void testDuplicateKeyJsonLevelTwo() {
 		webClientCommunicator.setURI("/device-json-duplicate-level-two");
 		webClientCommunicator.setParseContent("true");
-		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), "Error when parsing data,the JSON key is duplicate");
+		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), WebClientConstant.DUPLICATE_ERR);
 	}
 }

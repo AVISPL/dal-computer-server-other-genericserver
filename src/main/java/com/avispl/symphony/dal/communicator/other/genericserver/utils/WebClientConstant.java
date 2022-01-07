@@ -32,5 +32,6 @@ public final class WebClientConstant {
 	public static final String IMAGE = "image";
 	public static final String AUDIO = "audio";
 	public static final String DASH = "-";
+	public static final String DUPLICATE_ERR = "Error when parsing data, the JSON key is duplicated: ";
 
 }
