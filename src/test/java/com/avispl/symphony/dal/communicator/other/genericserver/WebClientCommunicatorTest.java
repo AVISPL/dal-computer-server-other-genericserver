@@ -1009,6 +1009,12 @@ class WebClientCommunicatorTest {
 		assertThrows(ResourceNotReachableException.class, () -> webClientCommunicator.getMultipleStatistics(), WebClientConstant.DUPLICATE_ERR);
 	}
 
+	/**
+	 * Test basic authorization error (missing username and password)
+	 *
+	 * @throws Exception if any unexpected error occurs
+	 * @since 3.0.0
+	 */
 	@Test
 	void testBasicAuthorizationError() throws Exception {
 		webClientCommunicator.destroy();
@@ -1019,6 +1025,12 @@ class WebClientCommunicatorTest {
 		assertThrows(FailedLoginException.class, () -> webClientCommunicator.getMultipleStatistics(), WebClientConstant.DUPLICATE_ERR);
 	}
 
+	/**
+	 * Test basic authorization success
+	 *
+	 * @throws Exception if any unexpected error occurs
+	 * @since 3.0.0
+	 */
 	@Test
 	void testBasicAuthorizationSuccess() throws Exception {
 		webClientCommunicator.destroy();
@@ -1040,6 +1052,12 @@ class WebClientCommunicatorTest {
 		Assertions.assertEquals("186355376", stats.get("Information#Serial"));
 	}
 
+	/**
+	 * Test header authorization success (Custom-Auth-Header header)
+	 *
+	 * @throws Exception if any unexpected error occurs
+	 * @since 3.0.0
+	 */
 	@Test
 	void testHeaderAuthorizationSuccess() throws Exception {
 		webClientCommunicator.destroy();
@@ -1061,6 +1079,12 @@ class WebClientCommunicatorTest {
 		Assertions.assertEquals("186355376", stats.get("Information#Serial"));
 	}
 
+	/**
+	 * Test header authorization success with basic Authorization header and password including default bearer
+	 *
+	 * @throws Exception if any unexpected error occurs
+	 * @since 3.0.0
+	 */
 	@Test
 	void testHeaderAuthorizationSuccessWithBasicHeaderName() throws Exception {
 		webClientCommunicator.destroy();
@@ -1082,6 +1106,12 @@ class WebClientCommunicatorTest {
 		Assertions.assertEquals("186355376", stats.get("Information#Serial"));
 	}
 
+	/**
+	 * Test header authorization error (Wrong custom header name)
+	 *
+	 * @throws Exception if any unexpected error occurs
+	 * @since 3.0.0
+	 */
 	@Test
 	void testHeaderAuthorizationError() throws Exception {
 		webClientCommunicator.destroy();
