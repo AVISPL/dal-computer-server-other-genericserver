@@ -835,10 +835,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 *
 	 * @param requestBuilder builder object to apply headers to
 	 * @return requestBuilder instance with proper authorization header specified
-	 * @throws FailedLoginException if header authentication method is selected, but no header name was provided
 	 * @since 3.0.0
 	 */
-	private RequestBuilder processRequestHeaders (RequestBuilder requestBuilder) throws FailedLoginException {
+	private RequestBuilder processRequestHeaders (RequestBuilder requestBuilder) {
 		boolean authenticationHeaderSpecified = StringUtils.isNotNullOrEmpty(authorizationHeader);
 		if (authenticationHeaderSpecified) {
 			requestBuilder.addHeader(authorizationHeader, this.getPassword());
