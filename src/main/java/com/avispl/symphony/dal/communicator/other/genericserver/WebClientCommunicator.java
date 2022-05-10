@@ -16,7 +16,10 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.regex.Matcher;
 
+import com.avispl.symphony.dal.communicator.other.genericserver.configuration.Configuration;
+import com.avispl.symphony.dal.communicator.other.genericserver.configuration.GroupConfiguration;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -89,6 +92,8 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	private final String statusAndBodySeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 	private final String bodyAndContentTypeSeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 
+	private String adapterConfiguration;
+	private Configuration endpointsConfiguration;
 	/**
 	 * WebClientCommunicator instantiation
 	 */
@@ -175,6 +180,24 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
+	 * Retrieves {@link #adapterConfiguration}
+	 *
+	 * @return value of {@link #adapterConfiguration}
+	 */
+	public String getAdapterConfiguration() {
+		return adapterConfiguration;
+	}
+
+	/**
+	 * Sets {@link #adapterConfiguration} value
+	 *
+	 * @param adapterConfiguration new value of {@link #adapterConfiguration}
+	 */
+	public void setAdapterConfiguration(String adapterConfiguration) {
+		this.adapterConfiguration = adapterConfiguration;
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * <p>
 	 * Adding the logic for build base URL
@@ -186,6 +209,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		}
 		super.internalInit();
 		buildBaseUrl();
+		parseAdapterConfiguration();
 	}
 
 	/**
@@ -261,6 +285,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		}
 		final ExtendedStatistics extStats = new ExtendedStatistics();
 		final Map<String, String> stats = new HashMap<>();
+
+		parseAdapterProperties(stats);
+
 		String uriStatusMessage;
 		if (!StringUtils.isNullOrEmpty(this.URI)) {
 			int statusCode;
@@ -846,5 +873,44 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 					" " + Base64.getEncoder().encodeToString(String.format("%s:%s", getLogin(), getPassword()).getBytes()));
 		}
 		return requestBuilder;
+	}
+
+	private void parseAdapterConfiguration () throws JsonProcessingException {
+		if (StringUtils.isNotNullOrEmpty(adapterConfiguration)) {
+			endpointsConfiguration = new ObjectMapper().readValue(adapterConfiguration, Configuration.class);
+		}
+	}
+
+	private void parseAdapterProperties (Map<String, String> properties) {
+		endpointsConfiguration.getEndpointConfiguration().forEach(endpointConfiguration -> {
+			try {
+				JsonNode json = super.doGet(endpointConfiguration.getEndpoint(), JsonNode.class);
+				Map<String, String> endpointRootConfig = endpointConfiguration.getConfiguration();
+				if (endpointRootConfig != null && !endpointRootConfig.isEmpty()) {
+					endpointRootConfig.forEach((s, s2) -> {
+						JsonNode prop = json.at(s2);
+						if (prop != null) {
+							properties.put(s, prop.asText());
+						}
+					});
+				}
+
+				List<GroupConfiguration> groupConfigurations = endpointConfiguration.getGroupConfiguration();
+
+				if (groupConfigurations != null && !groupConfigurations.isEmpty()) {
+					endpointConfiguration.getGroupConfiguration().forEach(groupConfiguration -> {
+						String groupName = groupConfiguration.getGroupName();
+						groupConfiguration.getConfiguration().forEach((s, s2) -> {
+							JsonNode prop = json.at(s2);
+							if (prop != null) {
+								properties.put(groupName + "#" + s, prop.asText());
+							}
+						});
+					});
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		});
 	}
 }

@@ -8,7 +8,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -37,7 +39,7 @@ import javax.security.auth.login.FailedLoginException;
  * @since 1.2.0
  */
 class WebClientCommunicatorTest {
-	private static final int HTTP_PORT = 8088;
+	private static final int HTTP_PORT = 8089;
 	private static final int HTTP_BASIC_AUTH_PORT = 65001;
 	private static final int HTTPS_PORT = 8443;
 	private static final String HOST_NAME = "127.0.0.1";
@@ -1034,9 +1036,9 @@ class WebClientCommunicatorTest {
 	@Test
 	void testBasicAuthorizationSuccess() throws Exception {
 		webClientCommunicator.destroy();
-		webClientCommunicator.setPort(80);
-		webClientCommunicator.setLogin("user");
-		webClientCommunicator.setPassword("6b138015-bcc0-45c4-a403-73f9f83a2101");
+		webClientCommunicator.setPort(8088);
+//		webClientCommunicator.setLogin("user");
+//		webClientCommunicator.setPassword("6b138015-bcc0-45c4-a403-73f9f83a2101");
 		webClientCommunicator.setURI("/json-object-third-level-basic-auth");
 		webClientCommunicator.init();
 
@@ -1123,5 +1125,29 @@ class WebClientCommunicatorTest {
 
 		webClientCommunicator.setParseContent("true");
 		assertThrows(FailedLoginException.class, () -> webClientCommunicator.getMultipleStatistics(), WebClientConstant.DUPLICATE_ERR);
+	}
+
+	@Test
+	void testAdapterEndpointConfiguration () throws Exception {
+		webClientCommunicator.destroy();
+		webClientCommunicator.setPort(8088);
+
+		InputStream is = getClass().getClassLoader().getResourceAsStream("testconfig.json");
+
+		StringBuilder textBuilder = new StringBuilder();
+		try (Reader reader = new BufferedReader(new InputStreamReader
+				(is, Charset.forName(StandardCharsets.UTF_8.name())))) {
+			int c = 0;
+			while ((c = reader.read()) != -1) {
+				textBuilder.append((char) c);
+			}
+		}
+
+		webClientCommunicator.setAdapterConfiguration(textBuilder.toString());
+		webClientCommunicator.init();
+
+		webClientCommunicator.setParseContent("true");
+		webClientCommunicator.getMultipleStatistics();
+
 	}
 }
