@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2021-2022 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.symphony.dal.communicator.other.genericserver;
 
@@ -12,12 +12,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.Base64;
 import java.util.UUID;
 import java.util.regex.Matcher;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import javax.security.auth.login.FailedLoginException;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -28,7 +31,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.ProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.util.EntityUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -74,9 +77,11 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @since 1.2.0
 	 */
 	private String parseContent;
+	private String baseRequestUrl;
+	private String authorizationHeader;
+
 	private boolean isParseContent;
 
-	private String baseRequestUrl;
 	private final ObjectMapper mapper = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
 	private final DocumentBuilder documentBuilder = buildSecureDocumentBuilder();
 
@@ -152,12 +157,33 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	}
 
 	/**
+	 * Retrieves {@link #authorizationHeader}
+	 *
+	 * @return value of {@link #authorizationHeader}
+	 */
+	public String getAuthorizationHeader() {
+		return authorizationHeader;
+	}
+
+	/**
+	 * Sets {@link #authorizationHeader} value
+	 *
+	 * @param authorizationHeader new value of {@link #authorizationHeader}
+	 */
+	public void setAuthorizationHeader(String authorizationHeader) {
+		this.authorizationHeader = authorizationHeader;
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * <p>
 	 * Adding the logic for build base URL
 	 */
 	@Override
 	protected void internalInit() throws Exception {
+		if (StringUtils.isNullOrEmpty(this.authorizationHeader)) {
+			setAuthenticationScheme(AuthenticationScheme.Basic);
+		}
 		super.internalInit();
 		buildBaseUrl();
 	}
@@ -183,7 +209,8 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 */
 	@Override
 	public String doGet(String uri) throws Exception {
-		HttpClient client = this.obtainHttpClient(false);
+		HttpClient client = this.obtainHttpClient(StringUtils.isNotNullOrEmpty(authorizationHeader) ||
+				StringUtils.isNotNullOrEmpty(this.getPassword()));
 
 		String getUri = this.buildRequestUrl(uri);
 		if (this.logger.isDebugEnabled()) {
@@ -193,7 +220,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		StringBuilder stringBuilder = new StringBuilder();
 		HttpResponse response = null;
 		try {
-			response = client.execute(new HttpGet(getUri));
+			RequestBuilder requestBuilder = RequestBuilder.get().setUri(getUri);
+			processRequestHeaders(requestBuilder);
+			response = client.execute(requestBuilder.build());
 			// status code
 			stringBuilder.append(response.getStatusLine().getStatusCode());
 
@@ -226,7 +255,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * @return List<Statistics> This returns the list of statistics
 	 */
 	@Override
-	public List<Statistics> getMultipleStatistics() {
+	public List<Statistics> getMultipleStatistics() throws Exception {
 		if (logger.isDebugEnabled()) {
 			logger.debug(String.format("Perform doGet() at host %s with port %s", this.host, this.getPort()));
 		}
@@ -238,7 +267,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			try {
 				isParseContent = isSupportParseContent();
 
-				String response = doGet(this.URI); // STATUS <statusAndBodySeparator> BODY <bodyAndContentTypeSeparator> CONTENT-TYPE
+				String response = this.doGet(this.URI); // STATUS <statusAndBodySeparator> BODY <bodyAndContentTypeSeparator> CONTENT-TYPE
 				int startOfBodyIndex = response.indexOf(statusAndBodySeparator);
 				int startOfContentTypeIndex = response.indexOf(bodyAndContentTypeSeparator);
 
@@ -258,7 +287,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				if (!HttpStatus.containsKey(statusCode)) {
 					throw new ResourceNotReachableException("Response status code not in range");
 				}
-
+				if (statusCode == 401) {
+					throw new FailedLoginException("Unauthorized: Unable to use resource with credentials specified.");
+				}
 				if (isParseContent) {
 					String contentType = response.substring(startOfContentTypeIndex + bodyAndContentTypeSeparator.length());
 					if (isValidContentType(contentType)) {
@@ -285,6 +316,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 					if (statusCode == -1) {
 						throw new ResourceNotReachableException(errorMessage);
 					}
+				} else if (exc instanceof FailedLoginException) {
+					// If it is a login or access issue - throw exception as it is.
+					throw exc;
 				} else {
 					throw new ResourceNotReachableException(errorMessage, exc);
 				}
@@ -297,6 +331,8 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		extStats.setStatistics(stats);
 		return Collections.singletonList(extStats);
 	}
+
+
 
 	/**
 	 * Return a string with status code & its description
@@ -792,5 +828,23 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 				excludedList.add(excludeEl.trim().replace(WebClientConstant.HASH_SIGN, ""));
 			}
 		}
+	}
+
+	/**
+	 * Add request headers to the prepared requestBuilder object
+	 *
+	 * @param requestBuilder builder object to apply headers to
+	 * @return requestBuilder instance with proper authorization header specified
+	 * @since 3.0.0
+	 */
+	private RequestBuilder processRequestHeaders (RequestBuilder requestBuilder) {
+		boolean authenticationHeaderSpecified = StringUtils.isNotNullOrEmpty(authorizationHeader);
+		if (authenticationHeaderSpecified) {
+			requestBuilder.addHeader(authorizationHeader, this.getPassword());
+		} else if (StringUtils.isNotNullOrEmpty(getLogin()) || StringUtils.isNotNullOrEmpty(getPassword())) {
+			requestBuilder.addHeader(WebClientConstant.AUTHORIZATION_HEADER_DEFAULT, WebClientConstant.AUTHENTICATION_METHOD_BASIC +
+					" " + Base64.getEncoder().encodeToString(String.format("%s:%s", getLogin(), getPassword()).getBytes()));
+		}
+		return requestBuilder;
 	}
 }

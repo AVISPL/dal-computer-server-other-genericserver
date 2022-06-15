@@ -1,5 +1,5 @@
 /*
- *  * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ *  * Copyright (c) 2021-2022 AVI-SPL, Inc. All Rights Reserved.
  */
 
 package com.avispl.symphony.dal.communicator.other.genericserver.utils;
@@ -33,5 +33,6 @@ public final class WebClientConstant {
 	public static final String AUDIO = "audio";
 	public static final String DASH = "-";
 	public static final String DUPLICATE_ERR = "Error when parsing data, the JSON key is duplicated: ";
-
+	public static final String AUTHENTICATION_METHOD_BASIC = "Basic";
+	public static final String AUTHORIZATION_HEADER_DEFAULT = "Authorization";
 }
