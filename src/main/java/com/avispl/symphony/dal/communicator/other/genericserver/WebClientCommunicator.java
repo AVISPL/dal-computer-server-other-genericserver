@@ -841,7 +841,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		boolean authenticationHeaderSpecified = StringUtils.isNotNullOrEmpty(authorizationHeader);
 		if (authenticationHeaderSpecified) {
 			requestBuilder.addHeader(authorizationHeader, this.getPassword());
-		} else if (StringUtils.isNotNullOrEmpty(getLogin()) && StringUtils.isNotNullOrEmpty(getPassword())) {
+		} else if (StringUtils.isNotNullOrEmpty(getLogin()) || StringUtils.isNotNullOrEmpty(getPassword())) {
 			requestBuilder.addHeader(WebClientConstant.AUTHORIZATION_HEADER_DEFAULT, WebClientConstant.AUTHENTICATION_METHOD_BASIC +
 					" " + Base64.getEncoder().encodeToString(String.format("%s:%s", getLogin(), getPassword()).getBytes()));
 		}
