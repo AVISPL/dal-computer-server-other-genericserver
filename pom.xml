@@ -1,13 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>com.avispl.symphony.dal.other.genericserver</groupId>
   <artifactId>symphony-dal-communicator-other-genericserver</artifactId>
   <version>3.0.0</version>
-
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
@@ -24,11 +19,11 @@
           <target>8</target>
         </configuration>
       </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.19.1</version> <!-- Specific due to memory leak in 2.20 -->
+        <version>2.19.1</version>
+        <!-- Specific due to memory leak in 2.20 -->
         <dependencies>
           <!--Custom provider and engine for Junit 5 to surefire-->
           <dependency>
@@ -43,7 +38,6 @@
           </dependency>
         </dependencies>
       </plugin>
-
       <!-- ${project.build.outputDirectory}/git.properties is generated at compile time -->
       <plugin>
         <groupId>pl.project13.maven</groupId>
@@ -80,23 +74,23 @@
     <dependency>
       <groupId>com.avispl.symphony.api</groupId>
       <artifactId>symphony-api-dal</artifactId>
-      <version>5.4.0</version>
+      <version>5.6.0</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-api-dal-5.4.0.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-api-dal-5.6.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.avispl.symphony.dal</groupId>
       <artifactId>symphony-dal-commons</artifactId>
-      <version>5.4.0</version>
+      <version>5.6.0</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-dal-commons-5.4.0.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-dal-commons-5.6.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.avispl.symphony.api</groupId>
       <artifactId>symphony-api-commons</artifactId>
-      <version>5.4.0</version>
+      <version>5.6.0</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-api-commons-5.4.0.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-api-commons-5.6.0.jar</systemPath>
     </dependency>
     <!-- Provided scope -->
     <dependency>
@@ -128,7 +122,7 @@
       <groupId>org.snmp4j</groupId>
       <artifactId>snmp4j</artifactId>
       <scope>test</scope>
-      <version>2.8.9</version>
+      <version>3.7.0</version>
     </dependency>
     <dependency>
       <groupId>com.github.tomakehurst</groupId>
@@ -158,13 +152,13 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.12.5</version>
+      <version>2.13.3</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
-      <version>2.12.5</version>
+      <version>2.13.3</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
