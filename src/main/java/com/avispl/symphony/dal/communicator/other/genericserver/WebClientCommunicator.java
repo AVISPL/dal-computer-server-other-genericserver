@@ -3,7 +3,9 @@
  */
 package com.avispl.symphony.dal.communicator.other.genericserver;
 
-import java.io.StringReader;
+import java.io.*;
+import java.net.ProtocolException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,9 +15,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Base64;
-import java.util.UUID;
 import java.util.regex.Matcher;
 
+import com.avispl.symphony.dal.communicator.other.genericserver.data.WebServerResponse;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,14 +27,15 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.ProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.RequestBuilder;
-import org.apache.http.util.EntityUtils;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpRequestExecution;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -55,6 +58,67 @@ import com.avispl.symphony.dal.util.StringUtils;
  * @since 1.2.0
  */
 public class WebClientCommunicator extends RestCommunicator implements Monitorable {
+	/**
+	 * API header interceptor instance
+	 * @since 3.0.1
+	 * */
+	private ClientHttpRequestInterceptor webClientInterceptor = new WebClientInterceptor();
+
+	/**
+	 * HttpRequest interceptor to intercept and format request into appropriate custom format of {@link WebServerResponse}
+	 *
+	 * @author Maksym.Rossiitsev/Symphony Team
+	 * @since 3.0.1
+	 * */
+	class WebClientInterceptor implements ClientHttpRequestInterceptor {
+		@Override
+		public ClientHttpResponse intercept(org.springframework.http.HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
+
+			final ClientHttpResponse response = execution.execute(request, body);
+			MediaType contentType = response.getHeaders().getContentType();
+			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+			StreamUtils.copy(response.getBody(), buffer);
+
+			ClientHttpResponse newResponse = new ClientHttpResponse() {
+				@Override
+				public org.springframework.http.HttpStatus getStatusCode() throws IOException {
+					return org.springframework.http.HttpStatus.OK;
+				}
+
+				@Override
+				public int getRawStatusCode() throws IOException {
+					return 200;
+				}
+
+				@Override
+				public String getStatusText() throws IOException {
+					return "";
+				}
+
+				@Override
+				public void close() {
+				}
+
+				@Override
+				public InputStream getBody() throws IOException {
+					WebServerResponse webServerResponse = new WebServerResponse();
+					webServerResponse.setBody(buffer.toString(StandardCharsets.UTF_8.name()));
+					webServerResponse.setStatus(response.getRawStatusCode());
+					webServerResponse.setContentType(getContentType(contentType));
+
+					return new ByteArrayInputStream(mapper.writeValueAsString(webServerResponse).getBytes());
+				}
+
+				@Override
+				public HttpHeaders getHeaders() {
+					HttpHeaders headers = response.getHeaders();
+					headers.setContentType(MediaType.APPLICATION_JSON);
+					return headers;
+				}
+			};
+			return newResponse;
+		}
+	}
 
 	/**
 	 * URI string that is used to check accessible.
@@ -84,10 +148,6 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 
 	private final ObjectMapper mapper = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
 	private final DocumentBuilder documentBuilder = buildSecureDocumentBuilder();
-
-	// Using the UUID for separate the response to make sure we do not have any conflict
-	private final String statusAndBodySeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
-	private final String bodyAndContentTypeSeparator = UUID.randomUUID().toString().replace(WebClientConstant.DASH, "");
 
 	/**
 	 * WebClientCommunicator instantiation
@@ -198,53 +258,29 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		// WebClientCommunicator doesn't require authentication
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * Get data from uri path
-	 *
-	 * @param uri the uri is the path get from the configuration properties on the symphony portal
-	 * @return String This returns the status code and dataBody if the response get body not null
-	 * @throws Exception if getting information from the Uri failed
-	 */
 	@Override
-	public String doGet(String uri) throws Exception {
-		HttpClient client = this.obtainHttpClient(StringUtils.isNotNullOrEmpty(authorizationHeader) ||
-				StringUtils.isNotNullOrEmpty(this.getPassword()));
+	protected RestTemplate obtainRestTemplate() throws Exception {
+		RestTemplate restTemplate = super.obtainRestTemplate();
+		List<ClientHttpRequestInterceptor> restTemplateInterceptors = restTemplate.getInterceptors();
 
-		String getUri = this.buildRequestUrl(uri);
-		if (this.logger.isDebugEnabled()) {
-			this.logger.debug("Performing a GET operation for " + getUri);
+		if (!restTemplateInterceptors.contains(webClientInterceptor))
+			restTemplateInterceptors.add(webClientInterceptor);
+
+		return restTemplate;
+	}
+
+	/**
+	 * Extract the content type from mediaType
+	 *
+	 * @param mediaType MimeType of the request
+	 * @return {@code contentType}
+	 */
+	private String getContentType(MediaType mediaType) {
+		String contentType = WebClientConstant.NO_RESPONSE_CONTENT_TYPE;
+		if (mediaType != null && !StringUtils.isNullOrEmpty(mediaType.getType())) {
+			contentType = mediaType.getType();
 		}
-
-		StringBuilder stringBuilder = new StringBuilder();
-		HttpResponse response = null;
-		try {
-			RequestBuilder requestBuilder = RequestBuilder.get().setUri(getUri);
-			processRequestHeaders(requestBuilder);
-			response = client.execute(requestBuilder.build());
-			// status code
-			stringBuilder.append(response.getStatusLine().getStatusCode());
-
-			HttpEntity httpEntity = response.getEntity();
-			if (isParseContent && httpEntity != null) {
-				// response body
-				String dataBody = EntityUtils.toString(httpEntity);
-				if (!StringUtils.isNullOrEmpty(dataBody)) {
-					stringBuilder.append(statusAndBodySeparator);
-					stringBuilder.append(dataBody);
-				}
-
-				// content type
-				stringBuilder.append(bodyAndContentTypeSeparator);
-				stringBuilder.append(getContentType(httpEntity));
-			}
-		} finally {
-			if (response instanceof CloseableHttpResponse) {
-				((CloseableHttpResponse) response).close();
-			}
-		}
-		return stringBuilder.toString();
+		return contentType;
 	}
 
 	/**
@@ -267,23 +303,8 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			try {
 				isParseContent = isSupportParseContent();
 
-				String response = this.doGet(this.URI); // STATUS <statusAndBodySeparator> BODY <bodyAndContentTypeSeparator> CONTENT-TYPE
-				int startOfBodyIndex = response.indexOf(statusAndBodySeparator);
-				int startOfContentTypeIndex = response.indexOf(bodyAndContentTypeSeparator);
-
-				if (startOfContentTypeIndex < 0) {
-					// no content type (means having no response body as well)
-					statusCode = Integer.parseInt(response);
-				} else {
-					// having content type
-					if (startOfBodyIndex < 0) {
-						// no response body
-						statusCode = Integer.parseInt(response.substring(0, startOfContentTypeIndex));
-					} else {
-						// have response body
-						statusCode = Integer.parseInt(response.substring(0, startOfBodyIndex));
-					}
-				}
+				WebServerResponse response = this.doGet(this.URI, WebServerResponse.class); // STATUS <statusAndBodySeparator> BODY <bodyAndContentTypeSeparator> CONTENT-TYPE
+				statusCode = response.getStatus();
 				if (!HttpStatus.containsKey(statusCode)) {
 					throw new ResourceNotReachableException("Response status code not in range");
 				}
@@ -291,13 +312,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 					throw new FailedLoginException("Unauthorized: Unable to use resource with credentials specified.");
 				}
 				if (isParseContent) {
-					String contentType = response.substring(startOfContentTypeIndex + bodyAndContentTypeSeparator.length());
+					String contentType = response.getContentType();
 					if (isValidContentType(contentType)) {
-						String responseBody = null;
-						if (startOfBodyIndex > 0) {
-							// have response body
-							responseBody = response.substring(startOfBodyIndex + statusAndBodySeparator.length(), startOfContentTypeIndex);
-						}
+						String responseBody = response.getBody();
 						// handle 2xx cases parsing data received from the device
 						if (200 <= statusCode && statusCode < 300) {
 							extractExcludeList(exclude);
@@ -343,19 +360,9 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		return statusCode + WebClientConstant.SPACE + HttpStatus.getDescription(statusCode);
 	}
 
-	/**
-	 * Extract the content type from httpEntity
-	 *
-	 * @param httpEntity HttpEntity
-	 * @return {@code contentType}
-	 */
-	private String getContentType(HttpEntity httpEntity) {
-		String contentType = WebClientConstant.NO_RESPONSE_CONTENT_TYPE;
-		Header header = httpEntity.getContentType();
-		if (header != null && !StringUtils.isNullOrEmpty(header.getValue())) {
-			contentType = header.getValue();
-		}
-		return contentType;
+	@Override
+	public String doGet(String uri) throws Exception {
+		return super.doGet(buildRequestUrl(uri));
 	}
 
 	/**
@@ -830,21 +837,15 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 		}
 	}
 
-	/**
-	 * Add request headers to the prepared requestBuilder object
-	 *
-	 * @param requestBuilder builder object to apply headers to
-	 * @return requestBuilder instance with proper authorization header specified
-	 * @since 3.0.0
-	 */
-	private RequestBuilder processRequestHeaders (RequestBuilder requestBuilder) {
+	@Override
+	protected HttpHeaders putExtraRequestHeaders(HttpMethod httpMethod, String uri, HttpHeaders headers) throws Exception {
 		boolean authenticationHeaderSpecified = StringUtils.isNotNullOrEmpty(authorizationHeader);
 		if (authenticationHeaderSpecified) {
-			requestBuilder.addHeader(authorizationHeader, this.getPassword());
+			headers.add(authorizationHeader, this.getPassword());
 		} else if (StringUtils.isNotNullOrEmpty(getLogin()) || StringUtils.isNotNullOrEmpty(getPassword())) {
-			requestBuilder.addHeader(WebClientConstant.AUTHORIZATION_HEADER_DEFAULT, WebClientConstant.AUTHENTICATION_METHOD_BASIC +
+			headers.add(WebClientConstant.AUTHORIZATION_HEADER_DEFAULT, WebClientConstant.AUTHENTICATION_METHOD_BASIC +
 					" " + Base64.getEncoder().encodeToString(String.format("%s:%s", getLogin(), getPassword()).getBytes()));
 		}
-		return requestBuilder;
+		return super.putExtraRequestHeaders(httpMethod, uri, headers);
 	}
 }
