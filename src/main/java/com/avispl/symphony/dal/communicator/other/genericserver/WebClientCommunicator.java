@@ -5,7 +5,6 @@ package com.avispl.symphony.dal.communicator.other.genericserver;
 
 import java.io.*;
 import java.net.ProtocolException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,9 +30,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.ClientHttpRequestExecution;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.*;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
@@ -73,50 +70,16 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	class WebClientInterceptor implements ClientHttpRequestInterceptor {
 		@Override
 		public ClientHttpResponse intercept(org.springframework.http.HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
-
 			final ClientHttpResponse response = execution.execute(request, body);
 			MediaType contentType = response.getHeaders().getContentType();
 			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 			StreamUtils.copy(response.getBody(), buffer);
 
-			ClientHttpResponse newResponse = new ClientHttpResponse() {
-				@Override
-				public org.springframework.http.HttpStatus getStatusCode() throws IOException {
-					return org.springframework.http.HttpStatus.OK;
-				}
-
-				@Override
-				public int getRawStatusCode() throws IOException {
-					return 200;
-				}
-
-				@Override
-				public String getStatusText() throws IOException {
-					return "";
-				}
-
-				@Override
-				public void close() {
-				}
-
-				@Override
-				public InputStream getBody() throws IOException {
-					WebServerResponse webServerResponse = new WebServerResponse();
-					webServerResponse.setBody(buffer.toString(StandardCharsets.UTF_8.name()));
-					webServerResponse.setStatus(response.getRawStatusCode());
-					webServerResponse.setContentType(getContentType(contentType));
-
-					return new ByteArrayInputStream(mapper.writeValueAsString(webServerResponse).getBytes());
-				}
-
-				@Override
-				public HttpHeaders getHeaders() {
-					HttpHeaders headers = response.getHeaders();
-					headers.setContentType(MediaType.APPLICATION_JSON);
-					return headers;
-				}
-			};
-			return newResponse;
+			try {
+				return new com.avispl.symphony.dal.communicator.other.genericserver.spring6.Spring6ClientHttpResponse(buffer, response, getContentType(contentType), mapper);
+			} catch (NoClassDefFoundError noClassDefFoundError) {
+				return new com.avispl.symphony.dal.communicator.other.genericserver.spring5.Spring5ClientHttpResponse(buffer, response, getContentType(contentType), mapper);
+			}
 		}
 	}
 
@@ -153,6 +116,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 	 * WebClientCommunicator instantiation
 	 */
 	public WebClientCommunicator() throws ParserConfigurationException {
+		setTrustAllCertificates(true);
 		// WebClientCommunicator no-args constructor
 	}
 
