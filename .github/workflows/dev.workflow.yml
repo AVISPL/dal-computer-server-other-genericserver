@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: adopt
-          java-version: 8
+          java-version: 17
           overwrite-settings: false
       - id: date
         run: echo "date=$(date +'%y%m%d' | cut -c 2-)" >> $GITHUB_OUTPUT
@@ -46,7 +46,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: adopt
-          java-version: 8
+          java-version: 17
           overwrite-settings: false
       - name: Version set
         run: mvn versions:set versions:commit -DnewVersion=${{ needs.versiongenerate.outputs.version }}
@@ -58,5 +58,5 @@ jobs:
         run: echo "file=$(ls target/symphony-dal-communicator-other-genericserver-${{ needs.versiongenerate.outputs.version }}.jar)" >> $GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
         with:
-          name: WebServerV2
+          name: GenericWebServer
           path: ${{ steps.getfilename.outputs.file }}
