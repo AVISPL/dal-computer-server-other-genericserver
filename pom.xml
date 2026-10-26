@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.avispl.symphony.dal.other.genericserver</groupId>
   <artifactId>symphony-dal-communicator-other-genericserver</artifactId>
-  <version>3.0.1</version>
+  <version>3.0.2</version>
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
