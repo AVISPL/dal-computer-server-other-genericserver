@@ -16,7 +16,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Spring 6 compatible version of ClientHttpResponse
+ * ClientHttpResponse that works on Spring 6 and Spring 7
  * */
 public class Spring6ClientHttpResponse implements ClientHttpResponse {
     private ByteArrayOutputStream buffer;
@@ -37,11 +37,6 @@ public class Spring6ClientHttpResponse implements ClientHttpResponse {
     }
 
     @Override
-    public int getRawStatusCode() throws IOException {
-        return 200;
-    }
-
-    @Override
     public String getStatusText() throws IOException {
         return "";
     }
@@ -54,7 +49,7 @@ public class Spring6ClientHttpResponse implements ClientHttpResponse {
     public InputStream getBody() throws IOException {
         WebServerResponse webServerResponse = new WebServerResponse();
         webServerResponse.setBody(buffer.toString(StandardCharsets.UTF_8.name()));
-        webServerResponse.setStatus(response.getRawStatusCode());
+        webServerResponse.setStatus(response.getStatusCode().value());
         webServerResponse.setContentType(contentType);
 
         return new ByteArrayInputStream(mapper.writeValueAsString(webServerResponse).getBytes());
@@ -62,7 +57,9 @@ public class Spring6ClientHttpResponse implements ClientHttpResponse {
 
     @Override
     public HttpHeaders getHeaders() {
-        HttpHeaders headers = HttpHeaders.writableHttpHeaders(response.getHeaders());
+        // Copy instead of HttpHeaders.writableHttpHeaders(), which is removed in Spring 7
+        HttpHeaders headers = new HttpHeaders();
+        response.getHeaders().forEach(headers::put);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }

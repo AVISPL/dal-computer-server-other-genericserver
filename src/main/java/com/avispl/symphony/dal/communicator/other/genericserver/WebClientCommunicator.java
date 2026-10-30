@@ -75,11 +75,7 @@ public class WebClientCommunicator extends RestCommunicator implements Monitorab
 			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 			StreamUtils.copy(response.getBody(), buffer);
 
-			try {
-				return new com.avispl.symphony.dal.communicator.other.genericserver.spring6.Spring6ClientHttpResponse(buffer, response, getContentType(contentType), mapper);
-			} catch (NoClassDefFoundError noClassDefFoundError) {
-				return new com.avispl.symphony.dal.communicator.other.genericserver.spring5.Spring5ClientHttpResponse(buffer, response, getContentType(contentType), mapper);
-			}
+			return new com.avispl.symphony.dal.communicator.other.genericserver.spring6.Spring6ClientHttpResponse(buffer, response, getContentType(contentType), mapper);
 		}
 	}
 
